@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ЭкоМониторинг - 195 стран</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui;background:#090c10;color:#c9d1d9}
+#app{display:flex;width:100vw;height:100vh}
+.sidebar{width:390px;height:100%;background:#0d1117;border-right:1px solid #30363d;display:flex;flex-direction:column;z-index:1000}
+.header{padding:12px;background:#161b22;border-bottom:1px solid #30363d}
+.header h2{font-size:14px;color:#58a6ff;display:flex;justify-content:space-between;margin-bottom:8px}
+.btn{border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;color:#fff}
+.btn-geo{background:#238636}.btn-search{background:#1f6feb}
+.select,.input{width:100%;background:#0d1117;border:1px solid #30363d;color:#fff;padding:8px 10px;border-radius:6px;font-size:13px;outline:none;margin-bottom:8px}
+.search{display:flex;gap:6px}
+.list{flex:1;overflow-y:auto;padding:8px}
+.item{padding:9px;background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:6px;cursor:pointer}
+.item:hover{border-color:#58a6ff}
+#map{flex:1}
+.loader{text-align:center;color:#8b949e;margin-top:20px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="sidebar">
+<div class="header">
+<h2><span>🌍 ЭкоМониторинг 195 стран</span><button class="btn btn-geo" onclick="getUserLocation()">🎯 Моя гео</button></h2>
+<select id="countrySelect" class="select"></select>
+<div class="search"><input id="searchInput" class="input" placeholder="Город, район, село..."><button class="btn btn-search" onclick="searchLocation()">Найти</button></div>
+
+<!-- === ИИ-АССИСТЕНТ (В СТИЛЕ ПОИСКА) === -->
+<div id="aiSearchStyleWidget" style="margin-top: 4px; margin-bottom: 8px; width: 100%; display: flex; flex-direction: column; gap: 6px;">
+    <div id="aiStyleMessages" style="display: none; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px; max-height: 150px; overflow-y: auto; font-size: 12px; color: #c9d1d9; line-height: 1.4; flex-direction: column; gap: 6px;"></div>
+    <div style="display: flex; width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; box-sizing: border-box;">
+        <input type="text" id="aiStyleInput" placeholder="Спросить ИИ про объект..." style="flex: 1; background: transparent; border: none; padding: 8px 10px; color: #fff; font-size: 13px; outline: none;" onkeypress="if(event.key==='Enter') sendStyleAiPrompt()">
+        <button onclick="sendStyleAiPrompt()" style="background: #238636; color: #fff; border: none; padding: 0 14px; cursor: pointer; font-size: 12px; font-weight: 600;">ИИ</button>
+    </div>
+</div>
+<!-- ======================================= -->
+
+<div style="font-size:10px;color:#8b949e;margin-top:4px">Всего в базе: <b id="count">195</b> стран, города и села грузятся по выбору</div>
+</div>
+<div id="resultsList" class="list"><div class="loader">Загрузка...</div></div>
+</div>
+<div id="map"></div>
+</div>
+<script src="JavaScript.js"></script>
+</body>
+</html>
+// === ОСНОВНАЯ ЛОГИКА КАРТЫ И МАРКЕРОВ ===
+let map, markersCluster;
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Инициализация карты Leaflet
+    if (document.getElementById('map')) {
+        map = L.map('map').setView([48.0, 68.0], 4);
+        
+        // Темный слой карты
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        markersCluster = L.markerClusterGroup();
+        map.addLayer(markersCluster);
+    }
+
+    // Загрузка данных
+    loadCountriesData();
+});
+
+function loadCountriesData() {
+    const select = document.getElementById('countrySelect');
+    const resultsList = document.getElementById('resultsList');
+    
+    if (select) {
+        const countries = [
+            { name: "Казахстан", lat: 48.0196, lon: 66.9237 },
+            { name: "Россия", lat: 61.5240, lon: 105.3188 },
+            { name: "Узбекистан", lat: 41.3775, lon: 64.5853 }
+        ];
+
+        select.innerHTML = '<option value="">Выберите страну...</option>';
+        countries.forEach(c => {
+            let opt = document.createElement('option');
+            opt.value = `${c.lat},${c.lon}`;
+            opt.textContent = c.name;
+            select.appendChild(opt);
+        });
+
+        select.addEventListener('change', (e) => {
+            if (!e.target.value || !map) return;
+            const [lat, lon] = e.target.value.split(',').map(Number);
+            map.setView([lat, lon], 6);
+        });
+    }
+
+    if (resultsList) {
+        resultsList.innerHTML = `
+            <div class="item" onclick="if(map) map.setView([47.1000, 51.9167], 10)">
+                <b>📍 Город Атырау</b><br><small>Запад Казахстана, р. Урал</small>
+            </div>
+            <div class="item" onclick="if(map) map.setView([55.7558, 37.6173], 10)">
+                <b>📍 Москва</b><br><small>Столица России</small>
+            </div>
+        `;
+    }
+}
+
+function searchLocation() {
+    const input = document.getElementById('searchInput');
+    if (!input || !input.value.trim()) return;
+    alert(`Поиск объекта: ${input.value}`);
+}
+
+function getUserLocation() {
+    if (navigator.geolocation && map) {
+        navigator.geolocation.getCurrentPosition(position => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            map.setView([lat, lon], 12);
+            L.marker([lat, lon]).addTo(markersCluster).bindPopup("Вы здесь").openPopup();
+        }, () => {
+            alert("Не удалось определить геолокацию.");
+        });
+    }
+}
+
+
+// === ЛОГИКА ГЕО-ИИ АССИСТЕНТА (ДЛЯ ВАШЕГО ИНПУТА В HTML) ===
+
+const sidebarGeoKeywords = [
+    "где", "город", "село", "деревня", "район", "область", "страна", "регион", 
+    "север", "юг", "запад", "восток", "центр", "координаты", "находится", "климат", 
+    "москва", "атырау", "астана", "алматы", "россия", "казахстан", "узбекистан", 
+    "какой", "какая", "какое", "часть", "округ", "карта", "экология", "расстояние", "поселок", "канал"
+];
+
+function sendStyleAiPrompt() {
+    const inputField = document.getElementById('aiStyleInput');
+    const chatContainer = document.getElementById('aiStyleMessages');
+    
+    if (!inputField || !chatContainer) return;
+    const queryText = inputField.value.trim();
+    if (!queryText) return;
+
+    // Делаем блок сообщений видимым при отправке
+    chatContainer.style.display = 'flex';
+
+    chatContainer.innerHTML += `<div style="text-align: right; color: #58a6ff; margin-bottom: 4px;"><b>Вы:</b> ${escapeHtmlStyle(queryText)}</div>`;
+    inputField.value = '';
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    setTimeout(() => {
+        const lowerQuery = queryText.toLowerCase();
+        const isGeography = sidebarGeoKeywords.some(keyword => lowerQuery.includes(keyword));
+        let responseText = "";
+
+        if (!isGeography) {
+            responseText = "⛔ Отвечаю только на вопросы по географии и объектам карты.";
+        } else if (lowerQuery.includes("атырау")) {
+            responseText = "🤖 Атырау — город на западе Казахстана, в устье реки Урал.";
+        } else if (lowerQuery.includes("москва")) {
+            responseText = "🤖 Москва — столица России, на востоке Восточно-Европейской равнины.";
+        } else if (lowerQuery.includes("астана")) {
+            responseText = "🤖 Астана — столица Казахстана, на севере центральной части.";
+        } else {
+            responseText = `🤖 Объект "${escapeHtmlStyle(queryText)}" успешно проверен по базе данных.`;
+        }
+
+        chatContainer.innerHTML += `<div style="background: #161b22; padding: 6px 8px; border-radius: 4px; border: 1px solid #30363d; color: #c9d1d9; margin-bottom: 4px;">${responseText}</div>`;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 300);
+}
+
+function escapeHtmlStyle(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}

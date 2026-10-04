@@ -1,0 +1,37 @@
+async function fetchLiveEcoData() {
+    const region = document.getElementById('regionInput').value.trim();
+    const topic = document.getElementById('topicSelect').value;
+    const language = document.getElementById('langSelect').value;
+    const resultBox = document.getElementById('resultBox');
+
+    if (!region) {
+        resultBox.innerText = "⚠️ Пожалуйста, укажите локацию / Please enter a location.";
+        return;
+    }
+
+    resultBox.innerText = "⏳ Генерация актуального отчета на выбранном языке...";
+
+    // Жесткий системный промпт с указанием языка и строгим фокусом на морскую экологию
+    const promptText = `Provide an operational ecological report for today (2026) regarding the location: "${region}".
+Threat topic focus: "${topic}" (marine/ocean/sea/coastal water pollution only: plastic, oil, chemicals, wastewater).
+Strict rules:
+1. MUST BE WRITTEN ENTIRELY IN LANGUAGE: "${language}".
+2. No generic fluff or land-locked topics. Strict focus only on water/sea/ocean ecosystems, coastal villages, districts, regions, or countries.
+3. Use clean structure with bullet points, numbers, and facts.`;
+
+    try {
+        const response = await fetch("https://text.pollinations.ai/" + encodeURIComponent(promptText), {
+            method: "GET"
+        });
+
+        if (!response.ok) {
+            throw new Error("API Connection Error");
+        }
+
+        const data = await response.text();
+        resultBox.innerText = data;
+
+    } catch (error) {
+        resultBox.innerText = `❌ Ошибка запроса / Request error for: "${region}".`;
+    }
+}
