@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Глобальный Мониторинг Загрязнений Земли</title>
+    <title>Глобальный Мониторинг Загрязнений</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -79,6 +79,7 @@
             box-shadow: 0 0 50px rgba(88, 166, 255, 0.2),
                         0 20px 60px rgba(0, 0, 0, 0.9);
             border: 2px solid rgba(88, 166, 255, 0.2);
+            overflow: hidden;
         }
 
         #map {
@@ -138,12 +139,12 @@
 
     <!-- Панель управления типами загрязнения -->
     <div class="filter-container">
-        <button class="filter-btn active" onclick="filterType('all')">🌍 Все виды</button>
-        <button class="filter-btn" onclick="filterType('air')">💨 Загрязнение воздуха</button>
-        <button class="filter-btn" onclick="filterType('ocean')">🌊 Пластик в океанах</button>
-        <button class="filter-btn" onclick="filterType('radiation')">☢️ Радиационный фон</button>
-        <button class="filter-btn" onclick="filterType('soil')">🧪 Загрязнение почвы</button>
-        <button class="filter-btn" onclick="filterType('deforest')">🌲 Вырубка лесов</button>
+        <button class="filter-btn active" onclick="filterType('all', this)">🌍 Все виды</button>
+        <button class="filter-btn" onclick="filterType('air', this)">💨 Загрязнение воздуха</button>
+        <button class="filter-btn" onclick="filterType('ocean', this)">🌊 Пластик в океанах</button>
+        <button class="filter-btn" onclick="filterType('radiation', this)">☢️ Радиационный фон</button>
+        <button class="filter-btn" onclick="filterType('soil', this)">🧪 Загрязнение почвы</button>
+        <button class="filter-btn" onclick="filterType('deforest', this)">🌲 Вырубка лесов</button>
     </div>
 
     <div class="map-frame">
@@ -161,8 +162,8 @@
             worldCopyJump: true
         });
 
-        // Картографический слой OpenStreetMap с русскоязычными городами и странами
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // ПРЯМОЙ СЛОЙ OPENSTREETMAP (Без API ключей)
+        const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
@@ -264,7 +265,6 @@
 
         // Функция отрисовки точек на карте
         function renderMarkers(filter = 'all') {
-            // Удаляем старые маркеры
             currentMarkers.forEach(m => map.removeLayer(m));
             currentMarkers = [];
 
@@ -295,9 +295,11 @@
         }
 
         // Переключение фильтров
-        function filterType(type) {
+        function filterType(type, btnElement) {
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            if (btnElement) {
+                btnElement.classList.add('active');
+            }
             renderMarkers(type);
         }
 
