@@ -489,17 +489,43 @@ function getUserLocation(){
       alert('Геолокация не поддерживается вашим браузером');
       return;
   }
-  navigator.geolocation.getCurrentPosition(p => {
+  
+  navigator.geolocation.getCurrentPosition(async p => {
     const lat = p.coords.latitude, lng = p.coords.longitude;
     map.flyTo([lat, lng], 12, {duration: 1.5});
     const pct = hashEco(lat, lng), color = getColor(pct);
-    const name = `Ваша геопозиция`;
-    const m = L.circleMarker([lat, lng], {radius: 10, fillColor: color, color: '#fff', weight: 2, fillOpacity: 1}).bindPopup(`<b>🎯 ${name}</b><br>Загрязнение ${pct}%`);
-    cluster.addLayer(m); m.openPopup();
-    getAIEcoReport(name);
+    let locationTitle = `Ваша геопозиция`;
+
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&email=support@ecomap.local`);
+        const data = await res.json();
+        if (data && data.address) {
+            const countryCode = (data.address.country_code || '').toUpperCase();
+            const foundCountry = allCountries.find(c => c.code === countryCode);
+            if (foundCountry) {
+                document.getElementById('countrySelect').value = foundCountry.code;
+                document.getElementById('customSelectTrigger').innerHTML = `${foundCountry.name} <span style="font-size:10px">▼</span>`;
+            }
+            if (data.address.city || data.address.town || data.address.village) {
+                locationTitle = data.address.city || data.address.town || data.address.village;
+            }
+        }
+    } catch (err) {
+        console.warn('Не удалось определить страну по координатам', err);
+    }
+
+    const m = L.circleMarker([lat, lng], {radius: 10, fillColor: color, color: '#fff', weight: 2, fillOpacity: 1}).bindPopup(`<b>🎯 ${locationTitle}</b><br>Загрязнение ${pct}%`);
+    cluster.clearLayers();
+    cluster.addLayer(m); 
+    m.openPopup();
+    
+    const list = document.getElementById('resultsList');
+    list.innerHTML = `<div class="item" style="border-color:#238636"><div style="font-weight:600">${locationTitle}</div><div style="font-size:11px;color:#8b949e">Текущие координаты</div><div style="font-size:11px;color:${color};font-weight:700">Загрязнение ${pct}%</div></div>`;
+
+    getAIEcoReport(locationTitle);
   }, () => {
-    alert('Не удалось получить геопозицию. Проверьте разрешения браузера.');
-  }, {timeout: 8000});
+      alert('Не удалось получить геопозицию. Проверьте разрешения браузера.');
+  }, {timeout: 10000, enableHighAccuracy: true});
 }
 
 const aiMiniInput = document.getElementById('aiMiniInput');
