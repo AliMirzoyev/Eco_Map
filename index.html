@@ -108,7 +108,7 @@
 <h2><span>🌍 ЭкоМониторинг 195 стран</span><button class="btn btn-geo" onclick="getUserLocation()">🎯 Моя гео</button></h2>
 
 <div class="custom-select-wrapper" id="customSelectWrapper">
-    <div class="custom-select" id="customSelectTrigger">Загрузка...</div>
+    <div class="custom-select" id="customSelectTrigger">🇰🇿 Казахстан <span style="font-size:10px">▼</span></div>
     <div class="custom-dropdown" id="customDropdown"></div>
 </div>
 <input type="hidden" id="countrySelect" value="KZ">
@@ -230,10 +230,6 @@ function init(){
     dropdown.appendChild(opt);
   });
 
-  const defaultCountry=allCountries.find(c=>c.code==='KZ')||allCountries[0];
-  hiddenInput.value=defaultCountry.code;
-  trigger.innerHTML=`${defaultCountry.name} <span style="font-size:10px">▼</span>`;
-
   trigger.onclick=(e)=>{
     e.stopPropagation();
     dropdown.classList.toggle('open');
@@ -320,10 +316,10 @@ function render(data){
     const lat=+i.lat, lng=+i.lon, name=i.name||i.display_name.split(',')[0];
     const pct=hashEco(lat,lng), color=getColor(pct);
     const m=L.circleMarker([lat,lng],{radius:8,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9});
-    m.bindPopup(`<b>📍 ${name}</b><br>${i.type}<br>Загрязнение: <b style="color:${color}">${pct}%</b>`);
+    m.bindPopup(`<b>📍 ${name}</b><br>${i.type||''}<br>Загрязнение: <b style="color:${color}">${pct}%</b>`);
     cluster.addLayer(m);
     const el=document.createElement('div'); el.className='item';
-    el.innerHTML=`<div style="font-weight:600">${name}</div><div style="font-size:11px;color:#8b949e">${i.type}</div><div style="font-size:11px;color:${color};font-weight:700">Загрязнение ${pct}%</div>`;
+    el.innerHTML=`<div style="font-weight:600">${name}</div><div style="font-size:11px;color:#8b949e">${i.type||''}</div><div style="font-size:11px;color:${color};font-weight:700">Загрязнение ${pct}%</div>`;
     el.onclick=()=>{ 
         map.flyTo([lat,lng], 11, {duration: 1.2});
         m.openPopup(); 
@@ -356,19 +352,25 @@ function getUserLocation(){
   navigator.geolocation.getCurrentPosition(async p=>{
     const lat=p.coords.latitude, lng=p.coords.longitude;
     map.flyTo([lat,lng], 12, {duration: 1.5});
+    
+    let locationName = `Точка (${lat.toFixed(2)}, ${lng.toFixed(2)})`;
     try {
         const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&email=eco@atyrau.kz`);
         const d=await r.json(); 
-        const name=(d.address && (d.address.city||d.address.village||d.address.town)) || "Моя гео";
-        const pct=hashEco(lat,lng), color=getColor(pct);
-        const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${name}</b><br>Загрязнение ${pct}%`);
-        cluster.addLayer(m); m.openPopup();
-        getAIEcoReport(name);
+        if(d && d.address) {
+            locationName = d.address.city || d.address.village || d.address.town || d.address.county || locationName;
+        }
     } catch(err) {
-        alert('Не удалось определить название места по координатам');
+        // Игнорируем сетевую ошибку обратного геокодирования и идем дальше с дефолтным именем
     }
+
+    const pct=hashEco(lat,lng), color=getColor(pct);
+    const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${locationName}</b><br>Загрязнение ${pct}%`);
+    cluster.addLayer(m); m.openPopup();
+    getAIEcoReport(locationName);
+
   },e=>{
-    alert('Ошибка геолокации: убедитесь, что разрешили доступ к GPS и запускаете проект через сервер (Live Server / localhost).');
+    alert('Ошибка геолокации: разрешите доступ к GPS и запускайте через сервер (Live Server / localhost).');
   },{timeout: 10000});
 }
 
@@ -379,27 +381,3 @@ init();
 </script>
 </body>
 </html>
-
-<style>
-@media (max-width: 768px){
-  #app{flex-direction:column}
-  .sidebar{width:100%!important;height:55vh!important;border-right:none;border-bottom:2px solid #30363d;order:2}
-  #map{width:100%!important;height:45vh!important;order:1;flex:none!important}
-  .header{padding:8px}
-  .custom-select,.input{font-size:15px!important}
-  #resultsList{max-height:140px;}
-}
-#mobileToggle{
-  display:none;position:fixed;top:10px;right:10px;z-index:999999;
-  background:#1f6feb;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-weight:700;font-size:12px;box-shadow:0 4px 12px #000;
-}
-@media (max-width:768px){#mobileToggle{display:block}}
-.sidebar.hidden{transform:translateY(100%);height:0!important;overflow:hidden}
-</style>
-
-<button id="mobileToggle" onclick="document.querySelector('.sidebar').classList.toggle('hidden'); setTimeout(()=>map.invalidateSize(),300)">☰ Список / Карта</button>
-
-<script>
-window.addEventListener('load', ()=>{ setTimeout(()=>{ if(window.map) map.invalidateSize(); }, 500); });
-window.addEventListener('resize', ()=>{ if(window.map) map.invalidateSize(); });
-</script>
