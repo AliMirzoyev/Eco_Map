@@ -16,7 +16,6 @@
 .btn{border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;color:#fff}
 .btn-geo{background:#238636}.btn-search{background:#1f6feb}
 
-/* КАСТОМНЫЙ СЕЛИКТ (100% видимость и стиль) */
 .custom-select-wrapper {
     position: relative;
     user-select: none;
@@ -108,10 +107,8 @@
 <div class="header">
 <h2><span>🌍 ЭкоМониторинг 195 стран</span><button class="btn btn-geo" onclick="getUserLocation()">🎯 Моя гео</button></h2>
 
-
-<!-- Кастомный выбор страны -->
 <div class="custom-select-wrapper" id="customSelectWrapper">
-    <div class="custom-select" id="customSelectTrigger">Выберите страну...</div>
+    <div class="custom-select" id="customSelectTrigger">Загрузка...</div>
     <div class="custom-dropdown" id="customDropdown"></div>
 </div>
 <input type="hidden" id="countrySelect" value="KZ">
@@ -142,7 +139,7 @@
 </div>
 
 <script>
-const map=L.map('map',{zoomControl:true,inertia:true}).setView([48,67],4);
+const map=L.map('map',{zoomControl:true,inertia:true}).setView([48,67],5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
 const cluster=L.markerClusterGroup(); map.addLayer(cluster);
 
@@ -313,7 +310,7 @@ async function loadCountryData(){
     const res=await fetch(`https://nominatim.openstreetmap.org/search?country=${code}&format=json&addressdetails=1&limit=50&featuretype=settlement&email=eco@atyrau.kz`);
     const data=await res.json();
     cache[key]=data; saveCache(); render(data);
-  }catch(e){ list.innerHTML='<div class="loader" style="color:#f85149">Лимит запросов</div>'; }
+  }catch(e){ list.innerHTML='<div class="loader" style="color:#f85149">Ошибка сети / Лимит</div>'; }
 }
 
 function render(data){
@@ -352,16 +349,27 @@ async function searchLocation(){
 }
 
 function getUserLocation(){
+  if (!navigator.geolocation) {
+      alert('Геолокация не поддерживается вашим браузером');
+      return;
+  }
   navigator.geolocation.getCurrentPosition(async p=>{
     const lat=p.coords.latitude, lng=p.coords.longitude;
     map.flyTo([lat,lng], 12, {duration: 1.5});
-    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&email=eco@atyrau.kz`);
-    const d=await r.json(); const name=d.address.city||d.address.village||"Моя гео";
-    const pct=hashEco(lat,lng), color=getColor(pct);
-    const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${name}</b><br>Загрязнение ${pct}%`);
-    cluster.addLayer(m); m.openPopup();
-    getAIEcoReport(name);
-  },()=>alert('Включи GPS'));
+    try {
+        const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&email=eco@atyrau.kz`);
+        const d=await r.json(); 
+        const name=(d.address && (d.address.city||d.address.village||d.address.town)) || "Моя гео";
+        const pct=hashEco(lat,lng), color=getColor(pct);
+        const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${name}</b><br>Загрязнение ${pct}%`);
+        cluster.addLayer(m); m.openPopup();
+        getAIEcoReport(name);
+    } catch(err) {
+        alert('Не удалось определить название места по координатам');
+    }
+  },e=>{
+    alert('Ошибка геолокации: убедитесь, что разрешили доступ к GPS и запускаете проект через сервер (Live Server / localhost).');
+  },{timeout: 10000});
 }
 
 document.getElementById('searchInput').addEventListener('keypress', e=>{ if(e.key==='Enter') searchLocation(); });
