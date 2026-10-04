@@ -16,7 +16,13 @@
 .btn{border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;color:#fff}
 .btn-geo{background:#238636}.btn-search{background:#1f6feb}
 
-.select {
+/* КАСТОМНЫЙ СЕЛИКТ (100% видимость и стиль) */
+.custom-select-wrapper {
+    position: relative;
+    user-select: none;
+    margin-bottom: 6px;
+}
+.custom-select {
     width: 100%;
     background: #21262d;
     border: 1px solid #58a6ff;
@@ -25,10 +31,36 @@
     border-radius: 6px;
     font-size: 13px;
     font-weight: 600;
-    outline: none;
-    margin-bottom: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
-.select option {
+.custom-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    margin-top: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.custom-dropdown.open {
+    display: block;
+}
+.custom-option {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #c9d1d9;
+    cursor: pointer;
+}
+.custom-option:hover {
     background: #21262d;
     color: #ffffff;
 }
@@ -75,7 +107,15 @@
 <div class="sidebar">
 <div class="header">
 <h2><span>🌍 ЭкоМониторинг 195 стран</span><button class="btn btn-geo" onclick="getUserLocation()">🎯 Моя гео</button></h2>
-<select id="countrySelect" class="select"></select>
+
+
+<!-- Кастомный выбор страны -->
+<div class="custom-select-wrapper" id="customSelectWrapper">
+    <div class="custom-select" id="customSelectTrigger">Выберите страну...</div>
+    <div class="custom-dropdown" id="customDropdown"></div>
+</div>
+<input type="hidden" id="countrySelect" value="KZ">
+
 <div class="search"><input id="searchInput" class="input" placeholder="Город, район, село..."><button class="btn btn-search" onclick="searchLocation()">Найти</button></div>
 <div style="font-size:10px;color:#8b949e">Всего в базе: <b id="count">195</b> стран</div>
 </div>
@@ -175,9 +215,37 @@ const allCountries=[
 ];
 
 function init(){
-  const sel=document.getElementById('countrySelect');
-  sel.innerHTML='';
-  allCountries.forEach(c=>{ const o=document.createElement('option'); o.value=c.code; o.textContent=c.name; if(c.code==='KZ') o.selected=true; sel.appendChild(o); });
+  const trigger=document.getElementById('customSelectTrigger');
+  const dropdown=document.getElementById('customDropdown');
+  const hiddenInput=document.getElementById('countrySelect');
+  
+  dropdown.innerHTML='';
+  allCountries.forEach(c=>{
+    const opt=document.createElement('div');
+    opt.className='custom-option';
+    opt.textContent=c.name;
+    opt.onclick=()=>{
+      hiddenInput.value=c.code;
+      trigger.innerHTML=`${c.name} <span style="font-size:10px">▼</span>`;
+      dropdown.classList.remove('open');
+      loadCountryData();
+    };
+    dropdown.appendChild(opt);
+  });
+
+  const defaultCountry=allCountries.find(c=>c.code==='KZ')||allCountries[0];
+  hiddenInput.value=defaultCountry.code;
+  trigger.innerHTML=`${defaultCountry.name} <span style="font-size:10px">▼</span>`;
+
+  trigger.onclick=(e)=>{
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  };
+
+  document.addEventListener('click', ()=>{
+    dropdown.classList.remove('open');
+  });
+
   document.getElementById('count').textContent=allCountries.length;
   loadCountryData();
 }
@@ -296,7 +364,6 @@ function getUserLocation(){
   },()=>alert('Включи GPS'));
 }
 
-document.getElementById('countrySelect').addEventListener('change', loadCountryData);
 document.getElementById('searchInput').addEventListener('keypress', e=>{ if(e.key==='Enter') searchLocation(); });
 document.getElementById('aiUserInput').addEventListener('keypress', e=>{ if(e.key==='Enter') askCustomAI(); });
 
@@ -311,7 +378,7 @@ init();
   .sidebar{width:100%!important;height:55vh!important;border-right:none;border-bottom:2px solid #30363d;order:2}
   #map{width:100%!important;height:45vh!important;order:1;flex:none!important}
   .header{padding:8px}
-  .select,.input{font-size:15px!important}
+  .custom-select,.input{font-size:15px!important}
   #resultsList{max-height:140px;}
 }
 #mobileToggle{
