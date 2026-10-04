@@ -125,3 +125,16 @@ async function getAIEcoReport(locationName) {
         aiText.innerHTML = `❌ Ошибка загрузки данных для ${locationName}. Проверьте подключение.`;
     }
 }
+
+async function openCamera() {
+    try {
+        // Запрос доступа к видеопотоку
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        
+        const videoElement = document.querySelector('video');
+        videoElement.srcObject = stream;
+        videoElement.play();
+    } catch (error) {
+        console.log("Ошибка доступа к камере или пользователь отклонил запрос:", error);
+    }
+}
