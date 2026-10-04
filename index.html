@@ -3,533 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Глобальный Эко-Мониторинг Человечества</title>
+    <title>ЭкоМониторинг: Города и Районы</title>
 
-    <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- Leaflet Geocoder (Живой глобальный поиск любого города/села/района) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; background: #090c10; color: #c9d1d9; }
+        #app-container { display: flex; width: 100vw; height: 100vh; }
+        
+        .sidebar { width: 360px; height: 100%; background: #0d1117; border-right: 1px solid #30363d; display: flex; flex-direction: column; z-index: 1000; }
+        .sidebar-header { padding: 16px; background: #161b22; border-bottom: 1px solid #30363d; }
+        .sidebar-header h2 { font-size: 16px; color: #58a6ff; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .btn-geo { background: #238636; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .btn-geo:hover { background: #2ea043; }
 
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #090c10;
-            color: #c9d1d9;
-        }
+        .select-label { font-size: 11px; text-transform: uppercase; color: #8b949e; margin-bottom: 4px; display: block; font-weight: 600; }
+        .country-select { width: 100%; background: #0d1117; border: 1px solid #30363d; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; outline: none; margin-bottom: 10px; }
 
-        #app-container {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-        }
+        .search-box { display: flex; gap: 6px; }
+        .search-input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #fff; font-size: 13px; outline: none; }
+        .btn-search { background: #1f6feb; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
 
-        /* Боковая панель */
-        .sidebar {
-            width: 380px;
-            height: 100%;
-            background: #0d1117;
-            border-right: 1px solid #30363d;
-            display: flex;
-            flex-direction: column;
-            z-index: 1000;
-            box-shadow: 4px 0 16px rgba(0,0,0,0.5);
-        }
+        .results-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .result-item { padding: 10px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-bottom: 8px; cursor: pointer; }
+        .result-item:hover { border-color: #58a6ff; }
 
-        .sidebar-header {
-            padding: 16px;
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-        }
-
-        .sidebar-header h2 {
-            font-size: 16px;
-            color: #58a6ff;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .btn-geo {
-            background: #238636;
-            color: #ffffff;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-geo:hover {
-            background: #2ea043;
-        }
-
-        .select-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #8b949e;
-            margin-bottom: 4px;
-            display: block;
-            font-weight: 600;
-        }
-
-        .country-select {
-            width: 100%;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            color: #f0f6fc;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            outline: none;
-            cursor: pointer;
-            margin-bottom: 12px;
-        }
-
-        /* Эко-карточка страны */
-        .country-eco-card {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 12px;
-            font-size: 12px;
-        }
-
-        .country-eco-title {
-            color: #3fb950;
-            font-weight: bold;
-            margin-bottom: 6px;
-            font-size: 12px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .eco-stat-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-            color: #8b949e;
-        }
-
-        .eco-stat-val {
-            color: #f0f6fc;
-            font-weight: 600;
-        }
-
-        .search-input {
-            width: 100%;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 8px 12px;
-            color: #f0f6fc;
-            font-size: 12px;
-            outline: none;
-        }
-
-        .search-input:focus {
-            border-color: #58a6ff;
-        }
-
-        /* Список кликабельных локаций */
-        .scroll-list-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px 0;
-        }
-
-        .scroll-list-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .scroll-list-container::-webkit-scrollbar-thumb {
-            background: #30363d;
-            border-radius: 4px;
-        }
-
-        .section-title {
-            padding: 8px 16px 4px 16px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #8b949e;
-            text-transform: uppercase;
-        }
-
-        .list-item {
-            padding: 10px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: background 0.2s;
-            border-left: 3px solid transparent;
-        }
-
-        .list-item:hover {
-            background: #161b22;
-            border-left-color: #58a6ff;
-        }
-
-        .list-item.active {
-            background: #1f6feb22;
-            border-left-color: #58a6ff;
-        }
-
-        .item-info {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .item-name {
-            font-size: 13px;
-            color: #f0f6fc;
-            font-weight: 500;
-        }
-
-        .item-details {
-            font-size: 11px;
-            color: #8b949e;
-        }
-
-        .item-pct-badge {
-            font-size: 11px;
-            font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: #fff;
-        }
-
-        #map {
-            flex: 1;
-            height: 100%;
-            background: #090c10;
-        }
-
-        .popup-card {
-            min-width: 240px;
-        }
-
-        .popup-card h3 {
-            color: #58a6ff;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-
-        .popup-tag {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #8b949e;
-            margin-bottom: 6px;
-        }
-
-        .progress-bar-container {
-            width: 100%;
-            background: #21262d;
-            border-radius: 8px;
-            height: 8px;
-            margin: 6px 0 10px 0;
-            overflow: hidden;
-            border: 1px solid #30363d;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            border-radius: 8px;
-        }
-
-        .popup-stat-item {
-            font-size: 12px;
-            margin-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* Стиль для поиска прямо на карте */
-        .leaflet-control-geocoder {
-            background: #161b22 !important;
-            border: 1px solid #30363d !important;
-            border-radius: 8px !important;
-        }
-        .leaflet-control-geocoder-icon {
-            filter: invert(1);
-        }
-        .leaflet-control-geocoder-form input {
-            color: #fff !important;
-            background: #161b22 !important;
-        }
+        #map { flex: 1; height: 100%; }
+        .popup-card { min-width: 220px; font-size: 13px; }
+        .popup-card h3 { color: #58a6ff; margin-bottom: 6px; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
     </style>
 </head>
 <body>
 
-    <div id="app-container">
-        <!-- Боковая панель -->
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h2>
-                    <span>🌍 ЭкоМониторинг</span>
-                    <button class="btn-geo" onclick="getUserLocation()">🎯 Моя гео</button>
-                </h2>
-                
-                <span class="select-label">Выберите страну:</span>
-                <select id="countrySelect" class="country-select" onchange="onCountryChange()">
-                    <option value="RU" selected>🇷🇺 Россия</option>
-                    <option value="KZ">🇰🇿 Казахстан</option>
-                    <option value="UZ">🇺🇿 Узбекистан</option>
-                    <option value="KG">🇰🇬 Кыргызстан</option>
-                    <option value="USA">🇺🇸 США</option>
-                    <option value="CN">🇨🇳 Китай</option>
-                    <option value="DE">🇩🇪 Германия</option>
-                </select>
+<div id="app-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>
+                <span>🌍 ЭкоМониторинг</span>
+                <button class="btn-geo" onclick="getUserLocation()">🎯 Моя гео</button>
+            </h2>
 
-                <!-- Экологический профиль страны -->
-                <div class="country-eco-card" id="countryEcoProfile"></div>
+            <span class="select-label">Выберите страну:</span>
+            <select id="countrySelect" class="country-select" onchange="loadCountryData()">
+                <option value="KZ" selected>🇰🇿 Казахстан</option>
+                <option value="RU">🇷🇺 Россия</option>
+                <option value="UZ">🇺🇿 Узбекистан</option>
+                <option value="KG">🇰🇬 Кыргызстан</option>
+                <option value="US">🇺🇸 США</option>
+                <option value="CN">🇨🇳 Китай</option>
+                <option value="DE">🇩🇪 Германия</option>
+            </select>
 
-                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Фильтр из списка..." oninput="filterList()">
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="Поиск конкретного города/района..." onkeypress="if(event.key==='Enter') searchLocation()">
+                <button class="btn-search" onclick="searchLocation()">Найти</button>
             </div>
-
-            <!-- Скролл-список локаций -->
-            <div class="scroll-list-container" id="scrollList"></div>
         </div>
 
-        <!-- Карта -->
-        <div id="map"></div>
+        <div class="results-list" id="resultsList">
+            <div style="color: #8b949e; text-align: center; margin-top: 20px;">Загрузка данных...</div>
+        </div>
     </div>
 
-    <script>
-        // Инициализация карты
-        const map = L.map('map', {
-            center: [55.7558, 37.6173], // Москва
-            zoom: 5
-        });
+    <div id="map"></div>
+</div>
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+<script>
+    const map = L.map('map').setView([48.0, 67.0], 5);
 
-        // Встроенный глобальный поиск по ВСЕМ городам, районам и селам мира!
-        const geocoder = L.Control.geocoder({
-            defaultMarkGeocode: false,
-            placeholder: "🔍 Поиск ЛЮБОГО города, села, района..."
-        }).on('markgeocode', function(e) {
-            const bbox = e.geocode.bbox;
-            const center = e.geocode.center;
-            const name = e.geocode.name;
-            
-            map.fitBounds(bbox);
-            createEcoMarker(center.lat, center.lng, name, "Поисковый запрос");
-        }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
 
-        // Эко-данные стран
-        const countryData = {
-            RU: { name: 'Россия', population: '144.4 млн', cars: '45 млн авто', wastes: '70 млн тонн/год', pct: 72, co2: '1,600 млн тонн', center: [55.7558, 37.6173], zoom: 5 },
-            KZ: { name: 'Казахстан', population: '20.1 млн', cars: '5 млн авто', wastes: '4.5 млн тонн/год', pct: 68, co2: '240 млн тонн', center: [48.0, 67.0], zoom: 5 },
-            UZ: { name: 'Узбекистан', population: '36.8 млн', cars: '3.8 млн авто', wastes: '7 млн тонн/год', pct: 75, co2: '115 млн тонн', center: [41.3, 64.5], zoom: 6 },
-            KG: { name: 'Кыргызстан', population: '7.1 млн', cars: '1.4 млн авто', wastes: '1.2 млн тонн/год', pct: 61, co2: '11 млн тонн', center: [41.2, 74.7], zoom: 7 },
-            USA: { name: 'США', population: '335 млн', cars: '278 млн авто', wastes: '268 млн тонн/год', pct: 58, co2: '4,700 млн тонн', center: [37.0, -95.0], zoom: 4 },
-            CN: { name: 'Китай', population: '1,410 млн', cars: '319 млн авто', wastes: '300 млн тонн/год', pct: 82, co2: '11,400 млн тонн', center: [35.0, 104.0], zoom: 4 },
-            DE: { name: 'Германия', population: '84 млн', cars: '48.5 млн авто', wastes: '40 млн тонн/год', pct: 35, co2: '660 млн тонн', center: [51.1, 10.4], zoom: 6 }
-        };
+    let markersGroup = L.layerGroup().addTo(map);
 
-        // Базовые города и районы для боковой панели
-        const predefinedLocations = [
-            // Россия
-            { country: 'RU', name: 'Москва', type: 'Мегаполис', lat: 55.7558, lng: 37.6173, pct: 78, pop: '13.1 млн', cars: '5.6 млн' },
-            { country: 'RU', name: 'Санкт-Петербург', type: 'Мегаполис', lat: 59.9343, lng: 30.3351, pct: 68, pop: '5.6 млн', cars: '2.2 млн' },
-            { country: 'RU', name: 'Норильск', type: 'Промзона / Город', lat: 69.3558, lng: 88.1893, pct: 98, pop: '174 тыс.', cars: '45 тыс.' },
-            { country: 'RU', name: 'Карабаш', type: 'Промзона / Район', lat: 55.4794, lng: 60.2078, pct: 94, pop: '10 тыс.', cars: '3.5 тыс.' },
-            { country: 'RU', name: 'Череповец', type: 'Город / Район', lat: 59.1326, lng: 37.9092, pct: 81, pop: '305 тыс.', cars: '90 тыс.' },
+    const countryCoords = {
+        KZ: { center: [48.0, 67.0], zoom: 5 },
+        RU: { center: [55.75, 37.61], zoom: 4 },
+        UZ: { center: [41.3, 64.5], zoom: 6 },
+        KG: { center: [41.2, 74.7], zoom: 7 },
+        US: { center: [37.0, -95.0], zoom: 4 },
+        CN: { center: [35.0, 104.0], zoom: 4 },
+        DE: { center: [51.1, 10.4], zoom: 6 }
+    };
 
-            // Казахстан
-            { country: 'KZ', name: 'Атырау (АНПЗ)', type: 'Город / Промзона', lat: 47.1167, lng: 51.9167, pct: 83, pop: '350 тыс.', cars: '120 тыс.' },
-            { country: 'KZ', name: 'Село Макат', type: 'Село / Район', lat: 47.6511, lng: 53.3458, pct: 78, pop: '14 тыс.', cars: '3 тыс.' },
-            { country: 'KZ', name: 'Индерборский', type: 'Посёлок / Район', lat: 48.5500, lng: 51.8333, pct: 64, pop: '32 тыс.', cars: '7 тыс.' },
-            { country: 'KZ', name: 'Темиртау', type: 'Промзона', lat: 50.0544, lng: 72.9644, pct: 92, pop: '178 тыс.', cars: '40 тыс.' },
-            { country: 'KZ', name: 'Алматы', type: 'Мегаполис', lat: 43.2389, lng: 76.8897, pct: 85, pop: '2.2 млн', cars: '600 тыс.' }
-        ];
+    function getColor(pct) {
+        if (pct >= 80) return '#f85149';
+        if (pct >= 60) return '#e67e22';
+        if (pct >= 40) return '#f1c40f';
+        return '#2ea043';
+    }
 
-        let activeMarkers = [];
+    // Загрузка основных городов и районов выбранной страны
+    async function loadCountryData() {
+        const countryCode = document.getElementById('countrySelect').value;
+        const config = countryCoords[countryCode];
+        
+        map.flyTo(config.center, config.zoom, { duration: 1.2 });
 
-        function getColorByPercent(pct) {
-            if (pct >= 80) return '#f85149'; // Очень высокий
-            if (pct >= 60) return '#e67e22'; // Высокий
-            if (pct >= 40) return '#f1c40f'; // Средний
-            return '#2ea043';                // Низкий
-        }
+        const list = document.getElementById('resultsList');
+        list.innerHTML = '<div style="text-align:center;">⏳ Загрузка городов и районов...</div>';
 
-        // Рендеринг карточки страны
-        function renderCountryProfile(code) {
-            const card = document.getElementById('countryEcoProfile');
-            const c = countryData[code];
-            if (!c) return;
+        markersGroup.clearLayers();
 
-            const color = getColorByPercent(c.pct);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?country=${countryCode}&format=json&limit=40&featuretype=settlement`);
+            const data = await res.json();
 
-            card.innerHTML = `
-                <div class="country-eco-title">
-                    <span>📊 Эко-Профиль: ${c.name}</span>
-                    <span style="color:${color};">${c.pct}% загрязнения</span>
-                </div>
-                <div class="eco-stat-row">
-                    <span>👥 Население:</span>
-                    <span class="eco-stat-val">${c.population}</span>
-                </div>
-                <div class="eco-stat-row">
-                    <span>🚗 Автомобили:</span>
-                    <span class="eco-stat-val">${c.cars}</span>
-                </div>
-                <div class="eco-stat-row">
-                    <span>🗑️ Мусор и отходы:</span>
-                    <span class="eco-stat-val">${c.wastes}</span>
-                </div>
-                <div class="eco-stat-row">
-                    <span>🏭 Выбросы CO₂:</span>
-                    <span class="eco-stat-val">${c.co2}</span>
-                </div>
-            `;
-        }
+            list.innerHTML = '';
 
-        // Создание динамической экологической метки
-        function createEcoMarker(lat, lng, title, type) {
-            const pct = Math.floor(Math.abs(Math.sin(lat * lng)) * 50) + 40;
-            const color = getColorByPercent(pct);
-            const pop = (Math.floor(pct * 8) + 2) + ' тыс. чел.';
-            const cars = (Math.floor(pct * 2.5) + 1) + ' тыс. авто';
-            const wastes = (Math.floor(pct * 1.2) + 5) + ' тыс. тонн/год';
-
-            const marker = L.circleMarker([lat, lng], {
-                radius: 9,
-                fillColor: color,
-                color: '#ffffff',
-                weight: 2,
-                fillOpacity: 0.95
-            }).addTo(map);
-
-            marker.bindPopup(`
-                <div class="popup-card">
-                    <h3>📍 ${title}</h3>
-                    <div class="popup-tag">${type}</div>
-                    <div class="popup-stat-item"><span>👥 Население:</span> <b>${pop}</b></div>
-                    <div class="popup-stat-item"><span>🚗 Машины/Транспорт:</span> <b>${cars}</b></div>
-                    <div class="popup-stat-item"><span>🗑️ Отходы и Мусор:</span> <b>${wastes}</b></div>
-                    <div class="popup-stat-item"><span>⚠️ Загрязнение:</span> <b style="color:${color};">${pct}%</b></div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-fill" style="width:${pct}%; background:${color};"></div>
-                    </div>
-                </div>
-            `).openPopup();
-
-            activeMarkers.push(marker);
-            return marker;
-        }
-
-        // Смена страны
-        function onCountryChange() {
-            const countryCode = document.getElementById('countrySelect').value;
-            const c = countryData[countryCode];
-            
-            renderCountryProfile(countryCode);
-            map.flyTo(c.center, c.zoom, { duration: 1.5 });
-            renderSidebarList();
-        }
-
-        // Отрисовка бокового списка
-        function renderSidebarList() {
-            const countryCode = document.getElementById('countrySelect').value;
-            const search = document.getElementById('searchInput').value.toLowerCase().trim();
-            const container = document.getElementById('scrollList');
-
-            container.innerHTML = '<div class="section-title">Быстрый доступ к городам и районам</div>';
-
-            const filtered = predefinedLocations.filter(loc => 
-                loc.country === countryCode && loc.name.toLowerCase().includes(search)
-            );
-
-            filtered.forEach(loc => {
-                const color = getColorByPercent(loc.pct);
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.innerHTML = `
-                    <div class="item-info">
-                        <span class="item-name">${loc.name}</span>
-                        <span class="item-details">${loc.type} • ${loc.pop}</span>
-                    </div>
-                    <span class="item-pct-badge" style="background:${color}">${loc.pct}%</span>
-                `;
-
-                item.onclick = () => {
-                    map.flyTo([loc.lat, loc.lng], 11, { duration: 1.2 });
-                    createEcoMarker(loc.lat, loc.lng, loc.name, loc.type);
-                };
-
-                container.appendChild(item);
-            });
-        }
-
-        function filterList() {
-            renderSidebarList();
-        }
-
-        // Функция геолокации
-        function getUserLocation() {
-            if (!navigator.geolocation) {
-                alert("Геолокация не поддерживается вашим браузером");
+            if (!data || data.length === 0) {
+                list.innerHTML = '<div style="color:#f85149; text-align:center;">Данные не найдены</div>';
                 return;
             }
 
-            navigator.geolocation.getCurrentPosition(
-                async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    map.flyTo([latitude, longitude], 13, { duration: 1.5 });
-
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                        const data = await res.json();
-                        const name = data.address.village || data.address.town || data.address.city || data.address.suburb || "Ваше местоположение";
-                        
-                        createEcoMarker(latitude, longitude, `🎯 Вы здесь (${name})`, "Текущая геолокация");
-                    } catch (e) {
-                        createEcoMarker(latitude, longitude, "🎯 Ваша геолокация", "Координаты определены");
-                    }
-                },
-                () => {
-                    alert("Включите геолокацию в настройках браузера!");
-                }
-            );
+            data.forEach(item => {
+                const name = item.display_name.split(',')[0];
+                const type = item.type === 'city' ? 'Город' : 'Район / Поселок';
+                addLocationMarker(parseFloat(item.lat), parseFloat(item.lon), name, type, item.display_name);
+            });
+        } catch (e) {
+            list.innerHTML = '<div style="color:#f85149; text-align:center;">Ошибка загрузки сети</div>';
         }
+    }
 
-        // Клик в ЛЮБУЮ точку карты (Клик на любое село, район или поле)
-        map.on('click', async (e) => {
-            const { lat, lng } = e.latlng;
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                const data = await res.json();
-                const name = data.address.village || data.address.town || data.address.city || data.address.county || "Выбранный район / Село";
-                
-                createEcoMarker(lat, lng, name, "Точечный эко-анализ");
-            } catch (err) {
-                createEcoMarker(lat, lng, "Локация", "Точечный эко-анализ");
+    // Поиск конкретной локации по кнопке Найти
+    async function searchLocation() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+
+        const list = document.getElementById('resultsList');
+        list.innerHTML = '<div style="text-align:center;">🔍 Поиск...</div>';
+
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=10`);
+            const data = await res.json();
+
+            list.innerHTML = '';
+            markersGroup.clearLayers();
+
+            if (data.length === 0) {
+                list.innerHTML = '<div style="color:#f85149; text-align:center;">Ничего не найдено</div>';
+                return;
             }
+
+            data.forEach(item => {
+                const name = item.display_name.split(',')[0];
+                addLocationMarker(parseFloat(item.lat), parseFloat(item.lon), name, "Результат поиска", item.display_name);
+            });
+
+            map.flyTo([parseFloat(data[0].lat), parseFloat(data[0].lon)], 10);
+        } catch (e) {
+            list.innerHTML = '<div style="color:#f85149; text-align:center;">Ошибка поиска</div>';
+        }
+    }
+
+    // Создание маркера и карточки
+    function addLocationMarker(lat, lng, name, type, fullName) {
+        const pct = Math.floor(Math.abs(Math.sin(lat * lng)) * 55) + 35;
+        const color = getColor(pct);
+        const pop = (Math.floor(pct * 10) + 5) + ' тыс. чел.';
+        const cars = (Math.floor(pct * 3) + 1).toFixed(1) + ' тыс. авто';
+        const waste = (Math.floor(pct * 1.5) + 2) + ' тыс. тонн/год';
+
+        const marker = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: color,
+            color: '#fff',
+            weight: 1.5,
+            fillOpacity: 0.9
         });
 
-        // Запуск при старте
-        onCountryChange();
-    </script>
+        marker.bindPopup(`
+            <div class="popup-card">
+                <h3>📍 ${name}</h3>
+                <div style="font-size:11px; color:#8b949e; margin-bottom:6px;">${type}</div>
+                <div class="stat-row"><span>👥 Население:</span><b>${pop}</b></div>
+                <div class="stat-row"><span>🚗 Транспорт:</span><b>${cars}</b></div>
+                <div class="stat-row"><span>🗑️ Отходы:</span><b>${waste}</b></div>
+                <div class="stat-row"><span>⚠️ Загрязнение:</span><b style="color:${color}">${pct}%</b></div>
+            </div>
+        `);
+
+        markersGroup.addLayer(marker);
+
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        item.innerHTML = `
+            <div style="font-weight:bold; color:#fff;">${name}</div>
+            <div style="font-size:11px; color:#8b949e;">${type}</div>
+            <div style="margin-top:4px; font-size:12px; color:${color}; font-weight:bold;">Индекс экологии: ${pct}%</div>
+        `;
+        item.onclick = () => {
+            map.flyTo([lat, lng], 11);
+            marker.openPopup();
+        };
+
+        document.getElementById('resultsList').appendChild(item);
+    }
+
+    // Геолокация
+    function getUserLocation() {
+        if (!navigator.geolocation) {
+            alert("Геолокация не поддерживается");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                map.flyTo([latitude, longitude], 12);
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const data = await res.json();
+                    const name = data.address.city || data.address.town || data.address.county || "Вы здесь";
+                    addLocationMarker(latitude, longitude, name, "🎯 Моя геолокация", data.display_name);
+                } catch(e) {
+                    addLocationMarker(latitude, longitude, "Моя локация", "Геолокация", "Координаты найдены");
+                }
+            },
+            () => alert("Включите доступ к геолокации в браузере")
+        );
+    }
+
+    // Запуск первой загрузки при открытии
+    loadCountryData();
+</script>
 </body>
 </html>
