@@ -1,44 +1,71 @@
-/* Плавающая панель ИИ внизу справа (чуть левее Activate Windows) */
-#aiFloatingPanel {
-    position: fixed;
-    bottom: 40px;
-    right: 200px; /* Сдвинута левее от надписи Activate Windows */
-    width: 380px;
-    max-width: 90vw;
-    background: #0d1117;
-    border: 1px solid #30363d;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+const panel = document.getElementById('aiFloatingPanel');
+const handle = document.getElementById('aiDragHandle');
+
+let isDragging = false;
+let startX, startY, initialLeft, initialTop;
+
+handle.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'BUTTON') return; // Не тащим, если кликнули по кнопке «Вернуть»
+
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const rect = panel.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    panel.style.transform = 'none';
+    panel.style.left = initialLeft + 'px';
+    panel.style.top = initialTop + 'px';
+    panel.style.bottom = 'auto';
+    panel.style.right = 'auto';
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+});
+
+function onMouseMove(e) {
+    if (!isDragging) return;
+    
+    // Вычисляем новые координаты с учетом смещения мыши
+    let dx = e.clientX - startX;
+    let dy = e.clientY - startY;
+    
+    let newLeft = initialLeft + dx;
+    let newTop = initialTop + dy;
+
+    // Получаем размеры окна браузера и самой панели
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const panelWidth = panel.offsetWidth;
+    const panelHeight = panel.offsetHeight;
+
+    // ЗАЩИТНЫЕ ОГРАНИЧЕНИЯ: не даем панели выходить за края экрана
+    // Слева (не меньше 10px) и справа (не больше ширина экрана минус ширина панели минус 10px)
+    if (newLeft < 10) newLeft = 10;
+    if (newLeft > windowWidth - panelWidth - 10) newLeft = windowWidth - panelWidth - 10;
+
+    // Сверху (не меньше 10px) и снизу (не больше высота экрана минус высота панели минус 10px)
+    if (newTop < 10) newTop = 10;
+    if (newTop > windowHeight - panelHeight - 10) newTop = windowHeight - panelHeight - 10;
+
+    // Применяем безопасные координаты
+    panel.style.left = newLeft + 'px';
+    panel.style.top = newTop + 'px';
 }
 
-/* Шапка панели для перетаскивания мышкой */
-.ai-drag-handle {
-    padding: 10px 14px;
-    background: #161b22;
-    border-bottom: 1px solid #30363d;
-    cursor: grab;
-    font-size: 13px;
-    font-weight: 600;
-    color: #58a6ff;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    user-select: none;
-}
-.ai-drag-handle:active {
-    cursor: grabbing;
+function onMouseUp() {
+    isDragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
 }
 
-.ai-body-content {
-    padding: 12px;
-    max-height: 220px;
-    overflow-y: auto;
-    font-size: 13px;
-    color: #c9d1d9;
-    background: #0d1117;
-    line-height: 1.4;
+// Функция мгновенного возврата панели на центр внизу
+function resetAIPosition() {
+    panel.style.top = 'auto';
+    panel.style.bottom = '25px';
+    panel.style.left = '50%';
+    panel.style.right = 'auto';
+    panel.style.transform = 'translateX(-50%)';
 }
