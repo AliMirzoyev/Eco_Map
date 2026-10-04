@@ -22,6 +22,27 @@
 .item:hover{border-color:#58a6ff}
 #map{flex:1}
 .loader{text-align:center;color:#8b949e;margin-top:20px;font-size:12px}
+
+/* Блок ИИ-справочника после канала Малика */
+.ai-box {
+    margin: 10px 8px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-left: 3px solid #58a6ff;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #e2e8f0;
+}
+.ai-title {
+    color: #58a6ff;
+    font-weight: bold;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 </style>
 </head>
 <body>
@@ -33,7 +54,17 @@
 <div class="search"><input id="searchInput" class="input" placeholder="Город, район, село..."><button class="btn btn-search" onclick="searchLocation()">Найти</button></div>
 <div style="font-size:10px;color:#8b949e;margin-top:4px">Всего в базе: <b id="count">195</b> стран, города и села грузятся по выбору</div>
 </div>
-<div id="resultsList" class="list"><div class="loader">Загрузка...</div></div>
+
+<div id="resultsList" class="list">
+    <div class="loader">Загрузка...</div>
+</div>
+
+<!-- БЛОК ИИ ТЕПЕРЬ СТРОГО ЗДЕСЬ (ПОСЛЕ КАНАЛА МАЛИКА / СПИСКА) -->
+<div class="ai-box">
+    <div class="ai-title">🤖 ИИ-Справочник (История и Экология)</div>
+    <div id="aiTextContent">Кликните на любую локацию или введите ее в поиск, чтобы ИИ выдал актуальную информацию на сегодняшний день...</div>
+</div>
+
 </div>
 <div id="map"></div>
 </div>
@@ -43,7 +74,6 @@ const map=L.map('map').setView([48,67],4);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
 const cluster=L.markerClusterGroup(); map.addLayer(cluster);
 
-// ПОЛНЫЙ СПИСОК 195 СТРАН - ВШИТ В ФАЙЛ, НИЧЕГО НЕ ПОТЕРЯЕТСЯ
 const allCountries=[
 {code:"AF",name:"🇦🇫 Афганистан",center:[33,65],zoom:6},{code:"AL",name:"🇦🇱 Албания",center:[41,20],zoom:7},{code:"DZ",name:"🇩🇿 Алжир",center:[28,3],zoom:5},
 {code:"AD",name:"🇦🇩 Андорра",center:[42.5,1.5],zoom:9},{code:"AO",name:"🇦🇴 Ангола",center:[-11,17],zoom:5},{code:"AG",name:"🇦🇬 Антигуа и Барбуда",center:[17, -61.8],zoom:8},
@@ -126,10 +156,35 @@ function hashEco(lat,lng){ const h=Math.abs(Math.sin(lat*999+lng*777)*10000)%100
 let cache=JSON.parse(localStorage.getItem('eco_cache')||'{}');
 function saveCache(){ localStorage.setItem('eco_cache', JSON.stringify(cache)); }
 
+// Функция запроса к ИИ (История + Экология на сегодняшний день)
+async function getAIEcoReport(locationName) {
+    const aiText = document.getElementById('aiTextContent');
+    if (!aiText) return;
+
+    aiText.innerHTML = `⏳ ИИ собирает актуальные данные и историю на сегодняшний день для: <b>${locationName}</b>...`;
+
+    const promptText = `Предоставь подробную, структурированную справку на сегодняшний день (2026 год) для локации: "${locationName}".
+Включи в ответ:
+1. Историческую справку (основание, ключевые вехи, развитие страны, региона, района или села).
+2. Экологическую обстановку (строго фокус на воду, моря, океаны, прибрежные зоны, разливы, химикаты, пластик, если применимо).
+Правила: Никакой пустой лирики, только сухие факты, цифры и четкая структура по пунктам на русском языке.`;
+
+    try {
+        const response = await fetch("https://text.pollinations.ai/" + encodeURIComponent(promptText));
+        const text = await response.text();
+        aiText.innerHTML = text.replace(/\n/g, '<br>');
+    } catch (e) {
+        aiText.innerHTML = `❌ Ошибка загрузки данных для ${locationName}.`;
+    }
+}
+
 async function loadCountryData(){
   const code=document.getElementById('countrySelect').value;
   const obj=allCountries.find(c=>c.code===code);
-  if(obj) map.flyTo(obj.center, obj.zoom, {duration:0.8});
+  if(obj) {
+      map.flyTo(obj.center, obj.zoom, {duration:0.8});
+      getAIEcoReport(obj.name.replace(/^[^\s]+\s/, '')); // Автозапрос ИИ для выбранной страны
+  }
   const list=document.getElementById('resultsList');
   list.innerHTML='<div class="loader">⏳ Загрузка городов, районов, сел...</div>';
   cluster.clearLayers();
@@ -149,11 +204,15 @@ function render(data){
     const lat=+i.lat, lng=+i.lon, name=i.name||i.display_name.split(',')[0];
     const pct=hashEco(lat,lng), color=getColor(pct);
     const m=L.circleMarker([lat,lng],{radius:8,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9});
-    m.bindPopup(`<b>📍 ${name}</b><br>${i.type}<br>Загрязнение: <b style="color:${color}">${pct}%</b><br><small>${i.display_name}</small>`);
+    m.bindPopup(`<b>📍 ${name}</b><br>${i.type}<br>Загрязнение: <b style="color:${color}">${pct}%</b><br><small>${i.display_name}</small><br><button onclick="getAIEcoReport('${name}')" style="margin-top:5px;padding:3px 6px;background:#1f6feb;color:#fff;border:none;border-radius:4px;cursor:pointer">Спросить ИИ</button>`);
     cluster.addLayer(m);
     const el=document.createElement('div'); el.className='item';
     el.innerHTML=`<div style="font-weight:600">${name}</div><div style="font-size:11px;color:#8b949e">${i.type} • ${i.display_name.split(',').slice(0,2).join(',')}</div><div style="font-size:11px;color:${color};font-weight:700">Загрязнение ${pct}%</div>`;
-    el.onclick=()=>{ map.flyTo([lat,lng],11); m.openPopup(); };
+    el.onclick=()=>{ 
+        map.flyTo([lat,lng],11); 
+        m.openPopup(); 
+        getAIEcoReport(name); // При клике на любой элемент списка (включая канал Малик) ИИ выдает историю и экологию
+    };
     list.appendChild(el);
   });
 }
@@ -164,7 +223,12 @@ async function searchLocation(){
   const code=document.getElementById('countrySelect').value;
   try{
     const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=${code}&limit=20&addressdetails=1&email=eco@atyrau.kz`);
-    const data=await res.json(); render(data); if(data[0]) map.flyTo([+data[0].lat,+data[0].lon],10);
+    const data=await res.json(); 
+    render(data); 
+    if(data[0]) {
+        map.flyTo([+data[0].lat,+data[0].lon],10);
+        getAIEcoReport(q);
+    }
   }catch(e){ list.innerHTML='<div class="loader" style="color:#f85149">Ошибка поиска</div>'; }
 }
 
@@ -177,6 +241,7 @@ function getUserLocation(){
     const pct=hashEco(lat,lng), color=getColor(pct);
     const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${name}</b><br>Загрязнение ${pct}%`);
     cluster.addLayer(m); m.openPopup();
+    getAIEcoReport(name);
   },()=>alert('Включи GPS'));
 }
 
@@ -189,43 +254,17 @@ init();
 </html>
 
 <style>
-/* === ФИКС ДЛЯ ТЕЛЕФОНА === */
 @media (max-width: 768px){
   #app{flex-direction:column}
- .sidebar{
-    width:100%!important;
-    height:55vh!important;
-    border-right:none;
-    border-bottom:2px solid #30363d;
-    order:2;
-  }
-  #map{
-    width:100%!important;
-    height:45vh!important;
-    order:1;
-    flex:none!important;
-  }
- .header{padding:8px}
- .select,.input{font-size:16px!important} /* чтобы не зумило на iPhone */
-  #aiBottom{height:140px!important;min-height:140px}
+  .sidebar{width:100%!important;height:55vh!important;border-right:none;border-bottom:2px solid #30363d;order:2}
+  #map{width:100%!important;height:45vh!important;order:1;flex:none!important}
+  .header{padding:8px}
+  .select,.input{font-size:16px!important}
   #resultsList{flex:1}
 }
-
-/* Кнопка скрыть сайдбар на телефоне */
 #mobileToggle{
-  display:none;
-  position:fixed;
-  top:10px;
-  right:10px;
-  z-index:999999;
-  background:#1f6feb;
-  color:#fff;
-  border:none;
-  border-radius:20px;
-  padding:8px 14px;
-  font-weight:700;
-  font-size:12px;
-  box-shadow:0 4px 12px #000;
+  display:none;position:fixed;top:10px;right:10px;z-index:999999;
+  background:#1f6feb;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-weight:700;font-size:12px;box-shadow:0 4px 12px #000;
 }
 @media (max-width:768px){#mobileToggle{display:block}}
 .sidebar.hidden{transform:translateY(100%);height:0!important;overflow:hidden}
@@ -234,12 +273,10 @@ init();
 <button id="mobileToggle" onclick="document.querySelector('.sidebar').classList.toggle('hidden'); setTimeout(()=>map.invalidateSize(),300)">☰ Список / Карта</button>
 
 <script>
-// Фикс размера карты после загрузки и поворота
 window.addEventListener('load', ()=>{ setTimeout(()=>{ if(window.map) map.invalidateSize(); }, 500); });
 window.addEventListener('resize', ()=>{ if(window.map) map.invalidateSize(); });
 window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ if(window.map) map.invalidateSize(); }, 500); });
 
-// Свайп чтобы прятать сайдбар
 let startY=0;
 const sb=document.querySelector('.sidebar');
 if(sb){
@@ -250,10 +287,3 @@ if(sb){
   }, {passive:true});
 }
 </script>
-
-
-<!-- Карточка ИИ-аналитики и истории -->
-<div id="aiResponseContainer" style="margin-top: 15px; background: #1c2541; border: 1px solid #3a506b; padding: 15px; border-radius: 8px; font-size: 13px; line-height: 1.5; color: #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-    <div style="color: #6fffe9; font-weight: bold; margin-bottom: 8px; font-size: 14px;">🤖 ИИ-Справочник (Экология и История)</div>
-    <div id="aiTextContent">Выберите или найдите локацию выше, чтобы ИИ выдал подробную справку...</div>
-</div>
