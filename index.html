@@ -23,7 +23,7 @@
 #map{flex:1}
 .loader{text-align:center;color:#8b949e;margin-top:20px;font-size:12px}
 
-/* Блок ИИ-справочника после канала Малика */
+/* Стили для блока ИИ прямо под списком/каналом Малик */
 .ai-box {
     margin: 10px 8px;
     background: #161b22;
@@ -59,10 +59,10 @@
     <div class="loader">Загрузка...</div>
 </div>
 
-<!-- БЛОК ИИ ТЕПЕРЬ СТРОГО ЗДЕСЬ (ПОСЛЕ КАНАЛА МАЛИКА / СПИСКА) -->
+<!-- БЛОК ИИ СТРОГО ЗДЕСЬ (ПОСЛЕ КАНАЛА МАЛИКА) -->
 <div class="ai-box">
     <div class="ai-title">🤖 ИИ-Справочник (История и Экология)</div>
-    <div id="aiTextContent">Кликните на любую локацию или введите ее в поиск, чтобы ИИ выдал актуальную информацию на сегодняшний день...</div>
+    <div id="aiTextContent">Кликните на любую карточку (например, «Казахстан» или «канал Малик») или найдите локацию, чтобы ИИ выдал справку на сегодняшний день...</div>
 </div>
 
 </div>
@@ -104,7 +104,7 @@ const allCountries=[
 {code:"IE",name:"🇮🇪 Ирландия",center:[53.4,-8],zoom:6},{code:"IL",name:"🇮🇱 Израиль",center:[31,35],zoom:7},{code:"IT",name:"🇮🇹 Италия",center:[41.8,12.5],zoom:5},
 {code:"JM",name:"🇯🇲 Ямайка",center:[18.1,-77.2],zoom:7},{code:"JP",name:"🇯🇵 Япония",center:[36.2,138],zoom:5},{code:"JO",name:"🇯🇴 Иордания",center:[30.5,36.2],zoom:7},
 {code:"KZ",name:"🇰🇿 Казахстан",center:[48,67],zoom:5},{code:"KE",name:"🇰🇪 Кения",center:[-0.02,37.9],zoom:6},{code:"KI",name:"🇰🇮 Кирибати",center:[-3.3,-168],zoom:5},
-{code:"KP",name:"🇰🇵 КНДР",center:[40,127],zoom:6},{code:"KR",name:"🇰🇷 Южная Корея",center:[35.9,127.7],zoom:6},{code:"XK",name:"🇽🇰 Косово",center:[42.6,20.9],zoom:8},
+{code:"KP",name:"🇰🇷 КНДР",center:[40,127],zoom:6},{code:"KR",name:"🇰🇷 Южная Корея",center:[35.9,127.7],zoom:6},{code:"XK",name:"🇽🇰 Косово",center:[42.6,20.9],zoom:8},
 {code:"KW",name:"🇰🇼 Кувейт",center:[29.3,47.4],zoom:7},{code:"KG",name:"🇰🇬 Кыргызстан",center:[41.2,74.7],zoom:6},{code:"LA",name:"🇱🇦 Лаос",center:[19.8,102.4],zoom:6},
 {code:"LV",name:"🇱🇻 Латвия",center:[56.8,24.6],zoom:6},{code:"LB",name:"🇱🇧 Ливан",center:[33.8,35.8],zoom:8},{code:"LS",name:"🇱🇸 Лесото",center:[-29.6,28.2],zoom:7},
 {code:"LR",name:"🇱🇷 Либерия",center:[6.4,-9.4],zoom:6},{code:"LY",name:"🇱🇾 Ливия",center:[26.3,17.2],zoom:5},{code:"LI",name:"🇱🇮 Лихтенштейн",center:[47.1,9.5],zoom:9},
@@ -156,16 +156,16 @@ function hashEco(lat,lng){ const h=Math.abs(Math.sin(lat*999+lng*777)*10000)%100
 let cache=JSON.parse(localStorage.getItem('eco_cache')||'{}');
 function saveCache(){ localStorage.setItem('eco_cache', JSON.stringify(cache)); }
 
-// Функция запроса к ИИ (История + Экология на сегодняшний день)
+// Функция запроса ИИ (История и экология на сегодняшний день)
 async function getAIEcoReport(locationName) {
     const aiText = document.getElementById('aiTextContent');
     if (!aiText) return;
 
-    aiText.innerHTML = `⏳ ИИ собирает актуальные данные и историю на сегодняшний день для: <b>${locationName}</b>...`;
+    aiText.innerHTML = `⏳ ИИ собирает актуальные данные и историю для: <b>${locationName}</b>...`;
 
     const promptText = `Предоставь подробную, структурированную справку на сегодняшний день (2026 год) для локации: "${locationName}".
 Включи в ответ:
-1. Историческую справку (основание, ключевые вехи, развитие страны, региона, района или села).
+1. Историческую справку (основание, ключевые вехи, развитие страны, региона или села).
 2. Экологическую обстановку (строго фокус на воду, моря, океаны, прибрежные зоны, разливы, химикаты, пластик, если применимо).
 Правила: Никакой пустой лирики, только сухие факты, цифры и четкая структура по пунктам на русском языке.`;
 
@@ -183,7 +183,7 @@ async function loadCountryData(){
   const obj=allCountries.find(c=>c.code===code);
   if(obj) {
       map.flyTo(obj.center, obj.zoom, {duration:0.8});
-      getAIEcoReport(obj.name.replace(/^[^\s]+\s/, '')); // Автозапрос ИИ для выбранной страны
+      getAIEcoReport(obj.name.replace(/^[^\s]+\s/, ''));
   }
   const list=document.getElementById('resultsList');
   list.innerHTML='<div class="loader">⏳ Загрузка городов, районов, сел...</div>';
@@ -204,14 +204,14 @@ function render(data){
     const lat=+i.lat, lng=+i.lon, name=i.name||i.display_name.split(',')[0];
     const pct=hashEco(lat,lng), color=getColor(pct);
     const m=L.circleMarker([lat,lng],{radius:8,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9});
-    m.bindPopup(`<b>📍 ${name}</b><br>${i.type}<br>Загрязнение: <b style="color:${color}">${pct}%</b><br><small>${i.display_name}</small><br><button onclick="getAIEcoReport('${name}')" style="margin-top:5px;padding:3px 6px;background:#1f6feb;color:#fff;border:none;border-radius:4px;cursor:pointer">Спросить ИИ</button>`);
+    m.bindPopup(`<b>📍 ${name}</b><br>${i.type}<br>Загрязнение: <b style="color:${color}">${pct}%</b><br><small>${i.display_name}</small>`);
     cluster.addLayer(m);
     const el=document.createElement('div'); el.className='item';
     el.innerHTML=`<div style="font-weight:600">${name}</div><div style="font-size:11px;color:#8b949e">${i.type} • ${i.display_name.split(',').slice(0,2).join(',')}</div><div style="font-size:11px;color:${color};font-weight:700">Загрязнение ${pct}%</div>`;
     el.onclick=()=>{ 
         map.flyTo([lat,lng],11); 
         m.openPopup(); 
-        getAIEcoReport(name); // При клике на любой элемент списка (включая канал Малик) ИИ выдает историю и экологию
+        getAIEcoReport(name); // При клике на канал Малик или любой элемент ИИ выдает историю и экологию
     };
     list.appendChild(el);
   });
