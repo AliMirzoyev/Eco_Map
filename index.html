@@ -16,20 +16,20 @@
 .btn{border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;color:#fff}
 .btn-geo{background:#238636}.btn-search{background:#1f6feb}
 
-/* ИСПРАВЛЕННЫЙ СТИЛЬ ДЛЯ ВЫПАДАЮЩЕГО СПИСКА (ТЕКСТ ТЕПЕРЬ ВИДЕН) */
 .select {
     width: 100%;
-    background: #161b22;
-    border: 1px solid #30363d;
+    background: #21262d;
+    border: 1px solid #58a6ff;
     color: #ffffff;
-    padding: 7px 9px;
+    padding: 8px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 600;
     outline: none;
     margin-bottom: 6px;
 }
 .select option {
-    background: #161b22;
+    background: #21262d;
     color: #ffffff;
 }
 
@@ -41,7 +41,6 @@
 #map{flex:1}
 .loader{text-align:center;color:#8b949e;margin-top:10px;font-size:11px}
 
-/* КОМПАКТНЫЙ БЛОК ИИ С ПРОКРУТКОЙ И ПОЛЕМ ВВОДА */
 .ai-box {
     margin: 8px;
     background: #161b22;
@@ -81,12 +80,10 @@
 <div style="font-size:10px;color:#8b949e">Всего в базе: <b id="count">195</b> стран</div>
 </div>
 
-<!-- СПИСОК ГОРОДОВ -->
 <div id="resultsList" class="list">
     <div class="loader">Загрузка...</div>
 </div>
 
-<!-- УМНЫЙ ИИ-БЛОК С ПОЛЕМ ДЛЯ ВВОДА ВАШИХ ВОПРОСОВ -->
 <div class="ai-box">
     <div class="ai-title">
         <span>🤖 ИИ-Справочник и Чат</span>
