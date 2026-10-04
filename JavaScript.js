@@ -42,3 +42,43 @@
     color: #c9d1d9;
     background: #0d1117;
 }
+
+const panel = document.getElementById('aiFloatingPanel');
+const handle = document.getElementById('aiDragHandle');
+
+let isDragging = false;
+let startX, startY, initialLeft, initialTop;
+
+handle.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const rect = panel.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    // Убираем центрирование через transform при начале перетаскивания
+    panel.style.transform = 'none';
+    panel.style.left = initialLeft + 'px';
+    panel.style.top = initialTop + 'px';
+    panel.style.bottom = 'auto';
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+});
+
+function onMouseMove(e) {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    panel.style.left = (initialLeft + dx) + 'px';
+    panel.style.top = (initialTop + dy) + 'px';
+}
+
+function onMouseUp() {
+    isDragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+}
