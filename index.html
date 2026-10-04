@@ -3,237 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoEco Monitor — Экологический мониторинг Евразии</title>
-    
-    <!-- Подключаем стили карты Leaflet -->
+    <title>Глобальный Мониторинг Загрязнений Земли</title>
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            background-color: #1a1a1a;
-            color: #ffffff;
-        }
-
-        /* Карта на весь экран */
-        #map {
-            flex-grow: 1;
-            height: 100%;
-            z-index: 1;
-        }
-
-        /* Боковая панель управления */
-        #sidebar {
-            width: 360px;
-            background: rgba(25, 28, 36, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 24px;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #090c10;
+            color: #c9d1d9;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
-            z-index: 2;
-            overflow-y: auto;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
         }
 
         h1 {
-            font-size: 1.4rem;
-            color: #4cd137;
+            margin-bottom: 6px;
+            font-weight: 700;
+            color: #58a6ff;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        p.subtitle {
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #8b949e;
+            text-align: center;
+        }
+
+        /* Панель фильтров видов загрязнения */
+        .filter-container {
             display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .subtitle {
-            font-size: 0.85rem;
-            color: #aaa;
-        }
-
-        /* Карточки статистики */
-        .stat-card {
-            background: #2f3640;
-            padding: 16px;
-            border-radius: 12px;
-            border-left: 4px solid #4cd137;
-        }
-
-        .stat-title {
-            font-size: 0.8rem;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .stat-value {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-top: 5px;
-        }
-
-        /* Легенда уровней AQI */
-        .legend {
-            display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
             gap: 8px;
-            background: #2f3640;
-            padding: 16px;
-            border-radius: 12px;
+            justify-content: center;
+            max-width: 700px;
+            margin-bottom: 18px;
         }
 
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-        }
-
-        .color-badge {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-        }
-
-        .bg-green { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
-        .bg-yellow { background-color: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
-        .bg-orange { background-color: #e67e22; box-shadow: 0 0 8px #e67e22; }
-        .bg-red { background-color: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
-
-        /* Кнопка обновления */
-        .btn-refresh {
-            background: #4cd137;
-            color: #000;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: bold;
+        .filter-btn {
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
-        .btn-refresh:hover {
-            background: #44bd32;
-            transform: translateY(-2px);
+        .filter-btn.active {
+            background: #238636;
+            border-color: #2ea043;
+            color: #ffffff;
+            font-weight: 600;
         }
 
-        /* Стили кастомных попапов карты */
-        .leaflet-popup-content-wrapper {
-            background: #2f3640;
-            color: #fff;
-            border-radius: 8px;
+        /* Круглый контейнер карты */
+        .map-frame {
+            position: relative;
+            width: 580px;
+            height: 580px;
+            border-radius: 50%;
+            padding: 10px;
+            background: radial-gradient(circle, #161b22 0%, #0d1117 100%);
+            box-shadow: 0 0 50px rgba(88, 166, 255, 0.2),
+                        0 20px 60px rgba(0, 0, 0, 0.9);
+            border: 2px solid rgba(88, 166, 255, 0.2);
         }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #090c10;
+        }
+
+        /* Кастомизация всплывающих окон */
+        .leaflet-popup-content-wrapper {
+            background: #161b22 !important;
+            color: #c9d1d9 !important;
+            border: 1px solid #30363d;
+            border-radius: 10px !important;
+            padding: 4px;
+        }
+
         .leaflet-popup-tip {
-            background: #2f3640;
+            background: #161b22 !important;
+        }
+
+        .popup-card h3 {
+            color: #58a6ff;
+            margin-bottom: 6px;
+            font-size: 15px;
+        }
+
+        .popup-card p {
+            font-size: 12px;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 11px;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        @media (max-width: 620px) {
+            .map-frame {
+                width: 330px;
+                height: 330px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- Карта -->
-    <div id="map"></div>
+    <h1>Глобальный Мониторинг Загрязнений</h1>
+    <p class="subtitle">Выберите тип загрязнения для фильтрации точек по всему миру</p>
 
-    <!-- Боковая панель -->
-    <div id="sidebar">
-        <div>
-            <h1>🌿 GeoEco Monitor</h1>
-            <p class="subtitle">Мониторинг качества воздуха в реальном времени по Евразии (C++ Backend)</p>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-title">Отслеживается станций</div>
-            <div class="stat-value" id="stations-count">0</div>
-        </div>
-
-        <div class="stat-card" style="border-left-color: #00a8ff;">
-            <div class="stat-title">Средний AQI по Евразии</div>
-            <div class="stat-value" id="avg-aqi">--</div>
-        </div>
-
-        <div class="legend">
-            <div class="stat-title" style="margin-bottom: 5px;">Шкала загрязнения (AQI)</div>
-            <div class="legend-item"><span class="color-badge bg-green"></span> 0 - 50: Отлично</div>
-            <div class="legend-item"><span class="color-badge bg-yellow"></span> 51 - 100: Умеренно</div>
-            <div class="legend-item"><span class="color-badge bg-orange"></span> 101 - 150: Вредно для уязвимых</div>
-            <div class="legend-item"><span class="color-badge bg-red"></span> 151+: Опасно для здоровья</div>
-        </div>
-
-        <button class="btn-refresh" onclick="loadEcoData()">🔄 Обновить данные</button>
+    <!-- Панель управления типами загрязнения -->
+    <div class="filter-container">
+        <button class="filter-btn active" onclick="filterType('all')">🌍 Все виды</button>
+        <button class="filter-btn" onclick="filterType('air')">💨 Загрязнение воздуха</button>
+        <button class="filter-btn" onclick="filterType('ocean')">🌊 Пластик в океанах</button>
+        <button class="filter-btn" onclick="filterType('radiation')">☢️ Радиационный фон</button>
+        <button class="filter-btn" onclick="filterType('soil')">🧪 Загрязнение почвы</button>
+        <button class="filter-btn" onclick="filterType('deforest')">🌲 Вырубка лесов</button>
     </div>
 
-    <!-- Скрипт Leaflet.js -->
+    <div class="map-frame">
+        <div id="map"></div>
+    </div>
+
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
-        // Инициализация карты (центр на Евразию)
-        const map = L.map('map').setView([48.0, 68.0], 3);
+        const map = L.map('map', {
+            center: [25.0, 15.0],
+            zoom: 2,
+            minZoom: 2,
+            maxZoom: 18,
+            worldCopyJump: true
+        });
 
-        // Тёмный стиль карты CartoDB DarkMatter (выглядит круто и современно)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
-            subdomains: 'abcd',
-            maxZoom: 19
+        // Картографический слой OpenStreetMap с русскоязычными городами и странами
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        let markersGroup = L.layerGroup().addTo(map);
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri'
+        });
 
-        // Функция определения цвета маркера
-        function getAQIColor(aqi) {
-            if (aqi <= 50) return '#2ecc71';
-            if (aqi <= 100) return '#f1c40f';
-            if (aqi <= 150) return '#e67e22';
-            return '#e74c3c';
+        L.control.layers({
+            "🗺️ Карта стран и городов": osmLayer,
+            "🛰️ Спутник": esriSatellite
+        }).addTo(map);
+
+        // База данных экологических катастроф и загрязнений
+        const ecoDatabase = [
+            {
+                type: 'air',
+                lat: 28.6139, lng: 77.2090,
+                location: 'Нью-Дели, Индия',
+                title: 'Опасный смог и токсичный воздух',
+                level: 'Критический (98%)',
+                color: '#e74c3c',
+                source: 'Выбросы автотранспорта и сжигание стерни на полях',
+                impact: 'Превышение PM2.5 в 20 раз. Опасность для легких и сердца.'
+            },
+            {
+                type: 'air',
+                lat: 39.9042, lng: 116.4074,
+                location: 'Пекин, Китай',
+                title: 'Промышленный смог',
+                level: 'Высокий (82%)',
+                color: '#e67e22',
+                source: 'Угольные электростанции и тяжелая промышленность',
+                impact: 'Снижение видимости, хронические заболевания дыхательных путей.'
+            },
+            {
+                type: 'ocean',
+                lat: 26.0, lng: -145.0,
+                location: 'Тихий океан',
+                title: 'Большое тихоокеанское мусорное пятно',
+                level: 'Экстремальный (99%)',
+                color: '#8e44ad',
+                source: 'Более 1.8 трлн фрагментов пластика и рыболовных сетей',
+                impact: 'Гибель морских животных, микропластик в пищевой цепи.'
+            },
+            {
+                type: 'ocean',
+                lat: -10.0, lng: 75.0,
+                location: 'Индийский океан',
+                title: 'Океанический пластиковый пятно-мусор',
+                level: 'Высокий (78%)',
+                color: '#8e44ad',
+                source: 'Бытовые отходы рек Южной и Юго-Восточной Азии',
+                impact: 'Разрушение коралловых рифов и отравление рыбы.'
+            },
+            {
+                type: 'radiation',
+                lat: 51.3890, lng: 30.0997,
+                location: 'Чернобыльская зона, Украина',
+                title: 'Радиационное загрязнение',
+                level: 'Опасно в зоне отчуждения (85%)',
+                color: '#f1c40f',
+                source: 'Авария на ЧАЭС 1986 года',
+                impact: 'Наличие радионуклидов Цезия-137 и Стронция-90 в почве.'
+            },
+            {
+                type: 'radiation',
+                lat: 37.4214, lng: 141.0325,
+                location: 'Фукусима, Япония',
+                title: 'Техногенная радиационная зона',
+                level: 'Умеренно-высокий (65%)',
+                color: '#f1c40f',
+                source: 'Авария на АЭС Фукусима-1',
+                impact: 'Накопление тритиевой воды и заражение прибрежной почвы.'
+            },
+            {
+                type: 'deforest',
+                lat: -3.4653, lng: -62.2159,
+                location: 'Амазония, Бразилия',
+                title: 'Уничтожение "Легких Планеты"',
+                level: 'Критический (92%)',
+                color: '#e74c3c',
+                source: 'Незаконная вырубка под скотоводство и соевые плантации',
+                impact: 'Выбросы углерода, утеря 20% биологических видов.'
+            },
+            {
+                type: 'soil',
+                lat: 43.2389, lng: 76.8897,
+                location: 'Алматы, Казахстан',
+                title: 'Загрязнение воздуха и почвы ТЭЦ',
+                level: 'Повышенный (70%)',
+                color: '#e67e22',
+                source: 'Сжигание угля на ТЭЦ и выхлопные газы в котловине',
+                impact: 'Накопление тяжелых металлов вдоль дорожных магистралей.'
+            }
+        ];
+
+        let currentMarkers = [];
+
+        // Функция отрисовки точек на карте
+        function renderMarkers(filter = 'all') {
+            // Удаляем старые маркеры
+            currentMarkers.forEach(m => map.removeLayer(m));
+            currentMarkers = [];
+
+            ecoDatabase.forEach(item => {
+                if (filter === 'all' || item.type === filter) {
+                    const marker = L.circleMarker([item.lat, item.lng], {
+                        radius: 11,
+                        fillColor: item.color,
+                        color: '#ffffff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                        <div class="popup-card">
+                            <h3>${item.title}</h3>
+                            <div class="badge" style="background: ${item.color}">${item.level}</div>
+                            <p><b>📍 Локация:</b> ${item.location}</p>
+                            <p><b>⚠️ Источник:</b> ${item.source}</p>
+                            <p><b>🩺 Последствия:</b> ${item.impact}</p>
+                        </div>
+                    `);
+
+                    currentMarkers.push(marker);
+                }
+            });
         }
 
-        // Загрузка данных от нашего C++ сервера
-        function loadEcoData() {
-            fetch('/api/sensors')
-                .then(response => response.json())
-                .then(data => {
-                    markersGroup.clearLayers();
-
-                    let totalAqi = 0;
-
-                    data.forEach(sensor => {
-                        totalAqi += sensor.aqi;
-                        const color = getAQIColor(sensor.aqi);
-
-                        // Создаем пульсирующий круговой маркер
-                        const circle = L.circleMarker([sensor.lat, sensor.lon], {
-                            color: color,
-                            fillColor: color,
-                            fillOpacity: 0.7,
-                            radius: 10 + (sensor.aqi / 20) // Чем выше загрязнение, тем крупнее точка
-                        });
-
-                        // Попап с деталями при клике
-                        circle.bindPopup(`
-                            <div style="font-size: 1rem; font-weight: bold; margin-bottom: 5px;">${sensor.city}, ${sensor.country}</div>
-                            <div>Индекс AQI: <b style="color: ${color}; font-size: 1.1rem;">${sensor.aqi}</b></div>
-                            <div style="font-size: 0.8rem; color: #aaa; margin-top: 5px;">Координаты: ${sensor.lat.toFixed(2)}, ${sensor.lon.toFixed(2)}</div>
-                        `);
-
-                        markersGroup.addLayer(circle);
-                    });
-
-                    // Обновляем статистику в боковой панели
-                    document.getElementById('stations-count').innerText = data.length;
-                    document.getElementById('avg-aqi').innerText = Math.round(totalAqi / data.length);
-                })
-                .catch(err => {
-                    console.log('C++ Сервер ещё запускается или не отвечает:', err);
-                });
+        // Переключение фильтров
+        function filterType(type) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderMarkers(type);
         }
 
-        // Автоматическая загрузка данных при открытии страницы
-        loadEcoData();
+        // Загрузка всех точек при старте
+        renderMarkers('all');
     </script>
 </body>
 </html>
