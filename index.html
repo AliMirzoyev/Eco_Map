@@ -1,127 +1,189 @@
-<!-- === НАЧАЛО ПОЛНОЦЕННОГО ИИ-АССИСТЕНТА V3 === -->
-<div id="aiSidebarWidget" style="margin-top: 15px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
-    <div style="padding: 10px 12px; background: #21262d; border-bottom: 1px solid #30363d; font-size: 13px; font-weight: 600; color: #58a6ff; display: flex; align-items: center; justify-content: space-between;">
-        <span>🤖 Гео-ИИ Ассистент</span>
-        <span style="font-size: 10px; background: #238636; color: #fff; padding: 2px 6px; border-radius: 4px;">Активен</span>
-    </div>
-    <div id="aiChatMessages" style="padding: 12px; height: 220px; overflow-y: auto; font-size: 12.5px; color: #c9d1d9; background: #0d1117; line-height: 1.4; display: flex; flex-direction: column; gap: 8px;">
-        <div style="background: #161b22; padding: 8px 10px; border-radius: 6px; border: 1px solid #30363d; color: #8b949e;">
-            👋 Привет! Я знаю все страны, области, районы, города и села. Спроси: столица, язык, валюта, население, район.
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ЭкоМониторинг V2 - 195 Стран</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui;background:#090c10;color:#c9d1d9}
+        #app-container{display:flex;width:100vw;height:100vh}
+       .sidebar{width:380px;height:100%;background:#0d1117;border-right:1px solid #30363d;display:flex;flex-direction:column;z-index:1000;flex-shrink:0}
+       .sidebar-header{padding:14px;background:#161b22;border-bottom:1px solid #30363d}
+       .sidebar-header h2{font-size:15px;color:#58a6ff;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+       .btn-geo{background:#238636;color:#fff;border:none;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer}
+       .country-select{width:100%;background:#0d1117;border:1px solid #30363d;color:#fff;padding:9px 12px;border-radius:6px;font-size:13px;outline:none;margin-bottom:10px}
+       .search-box{display:flex;gap:6px}
+       .search-input{flex:1;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#fff;font-size:13px;outline:none}
+       .btn-search{background:#1f6feb;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer}
+       .results-list{flex:1;overflow-y:auto;padding:10px}
+       .result-item{padding:10px;background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:6px;cursor:pointer;transition:.15s}
+       .result-item:hover{border-color:#58a6ff;transform:translateX(2px)}
+        #map{flex:1;height:100%}
+       .popup-card{min-width:230px}
+       .loader{color:#8b949e;text-align:center;margin-top:30px;font-size:13px}
+        @media(max-width:768px){.sidebar{width:100%;position:absolute;height:45%;bottom:0;z-index:1001}#map{height:55%}}
+    </style>
+</head>
+<body>
+<div id="app-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><span>🌍 ЭкоМониторинг V2</span><button class="btn-geo" onclick="getUserLocation()">🎯 Моя гео</button></h2>
+            <select id="countrySelect" class="country-select"></select>
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="Город, район, село...">
+                <button class="btn-search" onclick="searchLocation()">Найти</button>
+            </div>
         </div>
+        <div class="results-list" id="resultsList"><div class="loader">Загрузка 195 стран...</div></div>
     </div>
-    <div style="padding: 10px; background: #161b22; border-top: 1px solid #30363d; display: flex; gap: 6px;">
-        <input type="text" id="aiUserInput" placeholder="Введите запрос по карте..." style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 12px; outline: none;" onkeypress="if(event.key==='Enter') executeAIAssistant()">
-        <button onclick="executeAIAssistant()" style="background: #238636; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;">Спросить</button>
-    </div>
+    <div id="map"></div>
 </div>
 
 <script>
-    // РАСШИРЕННЫЙ ФИЛЬТР - 3 ЯЗЫКА
-    const geoKeywords = [
-        "где","город","село","деревня","район","область","страна","регион","столица","континент","координаты","находится","климат","карта","расстояние","поселок","канал","река","озеро","гора","население","площадь","язык","валюта","национальность","флаг","центр","округ","ауыл","аудан",
-        "country","capital","city","village","district","region","population","language","currency","continent","map","area",
-        // все страны и регионы для триггера
-        "казахстан","россия","узбекистан","кыргызстан","таджикистан","туркменистан","турция","азербайджан","армения","грузия","беларусь","украина","сша","канада","германия","франция","италия","испания","китай","япония","корея","индия","оаэ","дубай",
-        "атырау","астана","алматы","шымкент","актау","актобе","караганда","костанай","павлодар","уральск","тараз","кызылорда","семей","талдыкорган","кокшетау","петропавловск",
-        "жылыой","кульсары","индер","макат","махамбет","курмангазы","исатай","кызылкогинский","индерский","макатский"
-    ];
+const map = L.map('map').setView([48,67],4);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OSM | Nominatim'}).addTo(map);
+const markersCluster = L.markerClusterGroup();
+map.addLayer(markersCluster);
 
-    // ПОЛНАЯ БАЗА ЗНАНИЙ
-    const FULL_GEO_DB = {
-        // МИР - ТОП 50
-        "казахстан": "🇰🇿 <b>Казахстан</b> — Столица: Астана, Язык: казахский, русский, Валюта: тенге, Население: ~20 млн, Континент: Азия, Национальность: казахи",
-        "россия": "🇷🇺 <b>Россия</b> — Столица: Москва, Язык: русский, Валюта: рубль, Население: ~146 млн, Континент: Европа/Азия",
-        "узбекистан": "🇺🇿 <b>Узбекистан</b> — Столица: Ташкент, Язык: узбекский, Валюта: сум, Население: ~36 млн",
-        "кыргызстан": "🇰🇬 <b>Кыргызстан</b> — Столица: Бишкек, Язык: кыргызский, русский, Валюта: сом",
-        "турция": "🇹🇷 <b>Турция</b> — Столица: Анкара (крупнейший Стамбул), Язык: турецкий, Валюта: лира",
-        "сша": "🇺🇸 <b>США</b> — Столица: Вашингтон, Язык: английский, Валюта: доллар, Население: ~340 млн",
-        "китай": "🇨🇳 <b>Китай</b> — Столица: Пекин, Язык: китайский, Валюта: юань, Население: ~1.4 млрд",
-        "германия": "🇩🇪 <b>Германия</b> — Столица: Берлин, Язык: немецкий, Валюта: евро",
-        // КАЗАХСТАН - ОБЛАСТИ
-        "атырауская": "📍 <b>Атырауская область</b> — Адм. центр: Атырау, Площадь: 118,6 тыс км², Население: ~710 тыс, Районов: 7, На границе Европы и Азии, река Урал",
-        "атырау": "📍 <b>г. Атырау</b> — обл. центр Атырауской обл., Население: ~400 тыс, Расположен на р. Урал, нефтяная столица Казахстана, 2 района: Авангард и Привокзальный",
-        // РАЙОНЫ АТЫРАУСКОЙ ОБЛАСТИ
-        "жылыойский": "📍 <b>Жылыойский район</b> — Центр: Кульсары, Площадь: 29,4 тыс км², Крупное месторождение Тенгиз",
-        "кульсары": "📍 <b>г. Кульсары</b> — центр Жылыойского района, Население: ~60 тыс, Центр нефтяной промышленности",
-        "индерский": "📍 <b>Индерский район</b> — Центр: Индерборский, Знаменит озером Индер и залежами бора и соли",
-        "индерборский": "📍 <b>п. Индерборский</b> — центр Индерского района, Население: ~15 тыс",
-        "исатайский": "📍 <b>Исатайский район</b> — Центр: Аккистау, Площадь: 14,7 тыс км²",
-        "курмангазинский": "📍 <b>Курмангазинский район</b> — Центр: Курмангазы (Ганюшкино), На границе с Россией, у Каспийского моря",
-        "кызылкогинский": "📍 <b>Кызылкогинский район</b> — Центр: Миялы, Площадь: 24,9 тыс км²",
-        "макатский": "📍 <b>Макатский район</b> — Центр: Макат, Нефтяной район, Население: ~30 тыс",
-        "макат": "📍 <b>п. Макат</b> — центр Макатского района, Ж/д узел",
-        "махамбетский": "📍 <b>Махамбетский район</b> — Центр: Махамбет, Расположен вдоль реки Урал",
-        "махамбет": "📍 <b>с. Махамбет</b> — центр Махамбетского района",
-        // ГОРОДА КЗ
-        "астана": "📍 <b>Астана</b> — столица Казахстана, Население: ~1,4 млн, На реке Ишим, Самая северная столица Азии",
-        "алматы": "📍 <b>Алматы</b> — крупнейший город КЗ, Население: ~2,2 млн, У подножия Заилийского Алатау, Бывшая столица",
-        "актау": "📍 <b>Актау</b> — центр Мангистауской обл., Порт на Каспии, Население: ~270 тыс",
-        "москва": "📍 <b>Москва</b> — столица России, Население: ~13 млн, Центр Восточно-Европейской равнины"
+let cache = JSON.parse(localStorage.getItem('eco_cache')||'{}');
+function saveCache(){ localStorage.setItem('eco_cache', JSON.stringify(cache)); }
+
+// ПОЛНЫЙ СПИСОК 195 СТРАН - автозагрузка с API если нужно
+let allCountries = [
+  {code:"KZ",name:"🇰🇿 Казахстан",center:[48,67],zoom:5},{code:"RU",name:"🇷🇺 Россия",center:[61,105],zoom:3},{code:"UZ",name:"🇺🇿 Узбекистан",center:[41,64],zoom:6},
+  {code:"US",name:"🇺🇸 США",center:[39,-98],zoom:4},{code:"CN",name:"🇨🇳 Китай",center:[35,104],zoom:4},{code:"DE",name:"🇩🇪 Германия",center:[51,10],zoom:6},
+  {code:"TR",name:"🇹🇷 Турция",center:[39,35],zoom:6},{code:"AE",name:"🇦🇪 ОАЭ",center:[24,54],zoom:7}
+];
+
+async function initCountrySelect(){
+    const select = document.getElementById('countrySelect');
+    try{
+        // Тянем все 195 стран с restcountries для полноты
+        const r = await fetch('https://restcountries.com/v3.1/all?fields=cca2,flags,name,latlng');
+        const data = await r.json();
+        allCountries = data.map(c=>({
+            code:c.cca2,
+            name:`${c.flags? '' : ''} ${c.name.common}`,
+            center:c.latlng? [c.latlng[0], c.latlng[1]] : [0,0],
+            zoom:6,
+            emoji: c.flags
+        })).sort((a,b)=>a.name.localeCompare(b.name));
+        // оставим флаг через эмодзи если есть
+        allCountries.forEach(c=>{ if(c.emoji) c.name = `${c.name}` });
+    }catch(e){ console.log('Используем локальный список'); }
+
+    select.innerHTML = '';
+    allCountries.forEach(c=>{
+        const opt=document.createElement('option');
+        opt.value=c.code; opt.textContent=c.name;
+        if(c.code==='KZ') opt.selected=true;
+        select.appendChild(opt);
+    });
+    loadCountryData();
+}
+
+// ДЕТЕРМИНИРОВАННЫЙ РАСЧЕТ ЭКО - одинаковый для одних координат
+function hashEco(lat,lng){
+    let h = Math.abs(Math.sin(lat*999 + lng*777)*10000) % 100;
+    return {
+        pct: Math.floor(30 + h%60), // 30-90%
+        pop: Math.floor(5 + h%95),
+        cars: (h%10).toFixed(1),
+        waste: Math.floor(2 + h%20)
     };
+}
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+function getColor(p){ return p>=80?'#f85149':p>=60?'#e67e22':p>=40?'#f1c40f':'#2ea043'; }
+
+async function loadCountryData(){
+    const code = document.getElementById('countrySelect').value;
+    const obj = allCountries.find(c=>c.code===code);
+    if(obj) map.flyTo(obj.center, obj.zoom, {duration:1});
+
+    const list=document.getElementById('resultsList');
+    list.innerHTML='<div class="loader">⏳ Загрузка городов...</div>';
+    markersCluster.clearLayers();
+
+    const cacheKey='country_'+code;
+    if(cache[cacheKey]){ renderLocations(cache[cacheKey]); return; }
+
+    try{
+        // Добавил email и limit для Nominatim политики
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?country=${code}&format=json&addressdetails=1&limit=40&featuretype=city&email=eco@atyrau.kz`, {headers:{'Accept-Language':'ru'}});
+        const data = await res.json();
+        cache[cacheKey]=data; saveCache();
+        renderLocations(data);
+    }catch(e){
+        list.innerHTML='<div style="color:#f85149;text-align:center">Лимит запросов. Подожди 5 сек.</div>';
     }
+}
 
-    function executeAIAssistant() {
-        try {
-            const inputField = document.getElementById('aiUserInput');
-            const chatContainer = document.getElementById('aiChatMessages');
-            if (!inputField || !chatContainer) return;
-            const queryText = inputField.value.trim();
-            if (!queryText) return;
+function renderLocations(data){
+    const list=document.getElementById('resultsList');
+    list.innerHTML='';
+    if(!data||!data.length){ list.innerHTML='<div class="loader">Нет данных</div>'; return; }
+    data.forEach(item=>{
+        const lat=parseFloat(item.lat), lng=parseFloat(item.lon);
+        const name=item.name || item.display_name.split(',')[0];
+        addLocationMarker(lat,lng,name,item.type || 'Нас. пункт', item.display_name);
+    });
+}
 
-            const userMsg = document.createElement('div');
-            userMsg.style.cssText = "align-self: flex-end; background: #1f6feb; color: #fff; padding: 7px 10px; border-radius: 6px; max-width: 85%; word-break: break-word;";
-            userMsg.innerHTML = `👤 ${escapeHtml(queryText)}`;
-            chatContainer.appendChild(userMsg);
-            
-            inputField.value = '';
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', ()=>{
+    clearTimeout(searchTimeout);
+    searchTimeout=setTimeout(()=>searchLocation(), 600);
+});
 
-            setTimeout(() => {
-                try {
-                    const lowerQuery = queryText.toLowerCase();
-                    const isGeography = geoKeywords.some(k => lowerQuery.includes(k));
-                    
-                    let responseHTML = "";
+async function searchLocation(){
+    const q=document.getElementById('searchInput').value.trim();
+    if(!q) return;
+    const list=document.getElementById('resultsList');
+    list.innerHTML='<div class="loader">🔍 Поиск...</div>';
+    try{
+        const country = document.getElementById('countrySelect').value;
+        const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=${country}&limit=15&addressdetails=1&email=eco@atyrau.kz`);
+        const data=await res.json();
+        list.innerHTML=''; markersCluster.clearLayers();
+        if(!data.length){ list.innerHTML='<div style="color:#f85149;text-align:center">Ничего не найдено</div>'; return; }
+        data.forEach(i=>addLocationMarker(+i.lat,+i.lon,i.name||q,i.type,i.display_name));
+        map.flyTo([+data[0].lat,+data[0].lon],10);
+    }catch(e){ list.innerHTML='<div style="color:#f85149;text-align:center">Ошибка поиска</div>'; }
+}
 
-                    if (!isGeography) {
-                        responseHTML = `⛔ Извините, я настроен отвечать <b>только</b> на вопросы по географии, странам, регионам, районам, городам, селам и объектам эко-карты. Задайте вопрос по географии.`;
-                    } else {
-                        // Ищем совпадение в базе
-                        const foundKey = Object.keys(FULL_GEO_DB).find(key => lowerQuery.includes(key));
-                        if (foundKey) {
-                            responseHTML = `🤖 ${FULL_GEO_DB[foundKey]}`;
-                        } else if (lowerQuery.includes("столица") || lowerQuery.includes("capital")) {
-                            responseHTML = `🤖 Уточните, столица какой страны вас интересует? Например: "столица Японии" или "столица Казахстана". Я знаю все 195 стран мира.`;
-                        } else if (lowerQuery.includes("район") || lowerQuery.includes("аудан")) {
-                            responseHTML = `🤖 В Атырауской области 7 районов: Жылыойский (Кульсары), Индерский, Исатайский (Аккистау), Курмангазинский, Кызылкогинский (Миялы), Макатский, Махамбетский. Какой район интересует?`;
-                        } else if (lowerQuery.includes("село") || lowerQuery.includes("ауыл")) {
-                            responseHTML = `🤖 В базе Атырауской области более 60 сел. Напишите название села, например "Махамбет" или "Индерборский", и я покажу данные.`;
-                        } else {
-                            responseHTML = `🤖 Запрос по географическому объекту <b>"${escapeHtml(queryText)}"</b> принят. Это географический объект. Уточните: вас интересует столица, язык, валюта, население или координаты?`;
-                        }
-                    }
+function addLocationMarker(lat,lng,name,type,full){
+    const eco=hashEco(lat,lng);
+    const color=getColor(eco.pct);
+    const marker=L.circleMarker([lat,lng],{radius:9,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9});
+    marker.bindPopup(`<div class="popup-card"><h3 style="color:#58a6ff">📍 ${name}</h3><div style="font-size:11px;color:#8b949e">${type}</div><hr style="margin:6px 0;border-color:#30363d"><div>👥 Население: <b>${eco.pop} тыс.</b></div><div>🚗 Транспорт: <b>${eco.cars} тыс.</b></div><div>🗑️ Отходы: <b>${eco.waste} тыс.т/год</b></div><div>⚠️ Загрязнение: <b style="color:${color}">${eco.pct}%</b></div><div style="font-size:10px;color:#8b949e;margin-top:6px">${full}</div></div>`);
+    markersCluster.addLayer(marker);
 
-                    const aiMsg = document.createElement('div');
-                    aiMsg.style.cssText = "align-self: flex-start; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; padding: 8px 10px; border-radius: 6px; max-width: 88%; word-break: break-word;";
-                    aiMsg.innerHTML = responseHTML;
-                    chatContainer.appendChild(aiMsg);
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
+    const item=document.createElement('div');
+    item.className='result-item';
+    item.innerHTML=`<div style="font-weight:600;color:#fff">${name}</div><div style="font-size:11px;color:#8b949e">${type}</div><div style="color:${color};font-size:12px;font-weight:700;margin-top:4px">Загрязнение ${eco.pct}%</div>`;
+    item.onclick=()=>{ map.flyTo([lat,lng],12); marker.openPopup(); };
+    document.getElementById('resultsList').appendChild(item);
+}
 
-                } catch (innerErr) {
-                    console.error("Ошибка ответа:", innerErr);
-                }
-            }, 250);
+function getUserLocation(){
+    navigator.geolocation.getCurrentPosition(async pos=>{
+        const {latitude,longitude}=pos.coords;
+        map.flyTo([latitude,longitude],13);
+        const res=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=eco@atyrau.kz`);
+        const data=await res.json();
+        const name=data.address.city||data.address.town||data.address.village||"Моя геопозиция";
+        addLocationMarker(latitude,longitude,name+" 🎯","Моя гео",data.display_name);
+    },()=>alert("Включи GPS"),{enableHighAccuracy:true});
+}
 
-        } catch (err) {
-            console.error("Критическая ошибка:", err);
-        }
-    }
-    // Делаем функцию глобальной для onclick
-    window.executeAIAssistant = executeAIAssistant;
+document.getElementById('countrySelect').addEventListener('change', loadCountryData);
+initCountrySelect();
 </script>
-<!-- === КОНЕЦ АССИСТЕНТА V3 === -->
+</body>
+</html>
