@@ -1,118 +1,104 @@
-<!-- === ГЕО-ИИ АССИСТЕНТ V2 - ВСЕ СТРАНЫ МИРА === -->
-<div id="aiSidebarWidget" style="margin-top: 15px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
-    <div style="padding: 10px 12px; background: #21262d; border-bottom: 1px solid #30363d; font-size: 13px; font-weight: 600; color: #58a6ff; display: flex; align-items: center; justify-content: space-between;">
-        <span>🌍 Гео-База Знаний</span>
-        <span style="font-size: 10px; background: #238636; color: #fff; padding: 2px 6px; border-radius: 4px;">Все страны</span>
+<!-- === КОМПАКТНЫЙ ПЛАВАЮЩИЙ ИИ-ВИДЖЕТ V4 === -->
+<style>
+#aiFloatWrap{position:fixed;left:20px;bottom:20px;width:320px;height:280px;z-index:9999;display:flex;flex-direction:column;background:#0d1117;border:1px solid #30363d;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden;resize:both;min-width:240px;min-height:180px;max-width:90vw;max-height:80vh}
+#aiFloatHeader{padding:8px 10px;background:#161b22;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center;cursor:move;user-select:none;touch-action:none}
+#aiFloatHeader span{font-size:12px;font-weight:700;color:#58a6ff}
+.ai-header-btns{display:flex;gap:4px}
+.ai-h-btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:12px;line-height:1}
+.ai-h-btn:hover{background:#30363d}
+#aiChatMessages{flex:1;padding:8px;overflow-y:auto;font-size:12px;color:#c9d1d9;background:#0d1117;display:flex;flex-direction:column;gap:6px}
+#aiFloatInputBar{padding:6px;background:#161b22;border-top:1px solid #30363d;display:flex;gap:5px}
+#aiUserInput{flex:1;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:6px 8px;color:#fff;font-size:12px;outline:none}
+#aiAskBtn{background:#238636;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+#aiMinimizedBtn{position:fixed;left:20px;bottom:20px;z-index:9999;background:#238636;color:#fff;border:none;padding:10px 14px;border-radius:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5);font-size:13px;font-weight:600;display:none}
+</style>
+
+<button id="aiMinimizedBtn" onclick="aiToggle(true)">🤖 Гео-ИИ</button>
+
+<div id="aiFloatWrap">
+  <div id="aiFloatHeader">
+    <span>🤖 Гео-ИИ • компакт</span>
+    <div class="ai-header-btns">
+      <button class="ai-h-btn" onclick="aiCompact()" title="Компакт">↔</button>
+      <button class="ai-h-btn" onclick="aiToggle(false)" title="Свернуть">−</button>
+      <button class="ai-h-btn" onclick="aiClose()" title="Закрыть">×</button>
     </div>
-    <div id="aiChatMessages" style="padding: 12px; height: 280px; overflow-y: auto; font-size: 12.5px; color: #c9d1d9; background: #0d1117; line-height: 1.5; display: flex; flex-direction: column; gap: 8px;"></div>
-    <div style="padding: 10px; background: #161b22; border-top: 1px solid #30363d; display: flex; gap: 6px;">
-        <input type="text" id="aiUserInput" placeholder="Напр: столица Казахстана? язык Турции?" style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 12px; outline: none;">
-        <button id="aiAskBtn" style="background: #238636; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">Спросить</button>
-    </div>
+  </div>
+  <div id="aiChatMessages">
+    <div style="background:#161b22;padding:6px 8px;border-radius:6px;border:1px solid #30363d;color:#8b949e;font-size:11px">Привет! Я на карте, меня можно таскать. Спроси про страну, город, район.</div>
+  </div>
+  <div id="aiFloatInputBar">
+    <input type="text" id="aiUserInput" placeholder="Страна, город, село...">
+    <button id="aiAskBtn" onclick="executeAIAssistant()">↵</button>
+  </div>
 </div>
 
 <script>
 (function(){
-    const input = document.getElementById('aiUserInput');
-    const chat = document.getElementById('aiChatMessages');
-    const btn = document.getElementById('aiAskBtn');
+  const wrap=document.getElementById('aiFloatWrap'), header=document.getElementById('aiFloatHeader'), miniBtn=document.getElementById('aiMinimizedBtn');
+  const chat=document.getElementById('aiChatMessages'), input=document.getElementById('aiUserInput');
+  let isCompact=false, startX, startY, startLeft, startTop, dragging=false;
 
-    // 1. СТРОГИЙ ФИЛЬТР ТЕМ - только гео
-    const ALLOWED_TRIGGERS = [
-        // RU
-        "где","страна","столица","город","село","район","область","регион","континент","материк","остров","море","океан","река","озеро","гора","климат","координаты","население","площадь","язык","валюта","флаг","герб","национальность","гражданство","карта","границ","геолог","географ",
-        // EN
-        "country","capital","city","population","language","currency","continent","where","map","area",
-        // KZ
-        "ел","қала","астана","тіл","валюта","карта",
-        // Названия стран для триггера
-        "казахстан","россия","узбекистан","турция","сша","америка","германия","франция","китай","япония","индия","казакстан","kyrgyz","azerbaijan"
-    ];
+  // Загрузка позиции из памяти
+  const saved=JSON.parse(localStorage.getItem('ai_pos')||'{}');
+  if(saved.left) { wrap.style.left=saved.left; wrap.style.bottom='auto'; wrap.style.top=saved.top; }
+  if(saved.w) { wrap.style.width=saved.w; wrap.style.height=saved.h; }
 
-    const BLOCKED_TRIGGERS = ["рецепт","погода на завтра","фильм","игра","как взломать","политика","война кто прав","заработай","порно","секс"];
+  function savePos(){
+    localStorage.setItem('ai_pos', JSON.stringify({left:wrap.style.left, top:wrap.style.top, w:wrap.style.width, h:wrap.style.height}));
+  }
 
-    // 2. ЛОКАЛЬНАЯ БАЗА ТОП-30 СТРАН для оффлайн работы
-    const LOCAL_DB = {
-        "казахстан": {capital:"Астана", lang:"казахский, русский", currency:"тенге (KZT)", pop:"~20 млн", cont:"Азия", nation:"казахи"},
-        "россия": {capital:"Москва", lang:"русский", currency:"рубль (RUB)", pop:"~146 млн", cont:"Европа/Азия", nation:"русские"},
-        "узбекистан": {capital:"Ташкент", lang:"узбекский", currency:"сум (UZS)", pop:"~36 млн", cont:"Азия", nation:"узбеки"},
-        "турция": {capital:"Анкара", lang:"турецкий", currency:"лира (TRY)", pop:"~85 млн", cont:"Европа/Азия", nation:"турки"},
-        "сша": {capital:"Вашингтон", lang:"английский", currency:"доллар (USD)", pop:"~340 млн", cont:"Сев. Америка", nation:"американцы"},
-        "германия": {capital:"Берлин", lang:"немецкий", currency:"евро (EUR)", pop:"~84 млн", cont:"Европа", nation:"немцы"},
-        "китай": {capital:"Пекин", lang:"китайский", currency:"юань (CNY)", pop:"~1.4 млрд", cont:"Азия", nation:"китайцы"},
-        "япония": {capital:"Токио", lang:"японский", currency:"иена (JPY)", pop:"~124 млн", cont:"Азия", nation:"японцы"},
-    };
+  // DRAG
+  header.addEventListener('mousedown', e=>{ dragging=true; startX=e.clientX; startY=e.clientY; startLeft=wrap.offsetLeft; startTop=wrap.offsetTop; wrap.style.bottom='auto'; });
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    wrap.style.left=(startLeft + e.clientX - startX)+'px';
+    wrap.style.top=(startTop + e.clientY - startY)+'px';
+  });
+  window.addEventListener('mouseup', ()=>{ if(dragging){ dragging=false; savePos(); }});
 
-    function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  // TOUCH для телефона
+  header.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragging=true; startX=t.clientX; startY=t.clientY; startLeft=wrap.offsetLeft; startTop=wrap.offsetTop; wrap.style.bottom='auto'; }, {passive:false});
+  window.addEventListener('touchmove', e=>{ if(!dragging) return; const t=e.touches[0]; wrap.style.left=(startLeft + t.clientX - startX)+'px'; wrap.style.top=(startTop + t.clientY - startY)+'px'; }, {passive:false});
+  window.addEventListener('touchend', ()=>{ dragging=false; savePos(); });
 
-    function addMsg(html, isUser){
-        const el=document.createElement('div');
-        el.style.cssText = isUser ? "align-self:flex-end;background:#1f6feb;color:#fff;padding:7px 10px;border-radius:6px;max-width:85%;word-break:break-word;" : "align-self:flex-start;background:#161b22;border:1px solid #30363d;color:#c9d1d9;padding:8px 10px;border-radius:6px;max-width:92%;word-break:break-word;";
-        el.innerHTML = isUser ? `👤 ${escapeHtml(html)}` : html;
-        chat.appendChild(el);
-        chat.scrollTop = chat.scrollHeight;
-    }
+  // RESIZE observer
+  new ResizeObserver(()=>savePos()).observe(wrap);
 
-    addMsg(`👋 Я знаю <b>все 250 стран мира</b>. Спроси:<br>• столица, язык, валюта, население<br>• национальность, континент, площадь<br>Пример: "Какая столица Канады и какой язык?"`, false);
+  window.aiToggle=function(show){
+    if(show){ wrap.style.display='flex'; miniBtn.style.display='none'; }
+    else{ wrap.style.display='none'; miniBtn.style.display='block'; }
+  };
+  window.aiClose=function(){ wrap.style.display='none'; miniBtn.style.display='block'; };
+  window.aiCompact=function(){
+    isCompact=!isCompact;
+    if(isCompact){ wrap.style.width='260px'; wrap.style.height='180px'; }
+    else{ wrap.style.width='320px'; wrap.style.height='280px'; }
+    savePos();
+  };
 
-    function isGeoQuery(q){
-        const l = q.toLowerCase();
-        if(BLOCKED_TRIGGERS.some(w=>l.includes(w))) return false;
-        return ALLOWED_TRIGGERS.some(w=>l.includes(w));
-    }
+  const geoKeywords=["где","город","село","район","область","страна","столица","координаты","карта","атырау","астана","казахстан","россия","country","capital","city"];
+  const DB={ "казахстан":"🇰🇿 Казахстан - Астана, ~20 млн, тенге","атырау":"📍 Атырау - нефтяная столица, на Урале, ~400 тыс","астана":"📍 Астана - столица КЗ, ~1.4 млн","москва":"📍 Москва - столица РФ, ~13 млн","алматы":"📍 Алматы - ~2.2 млн, у гор" };
 
-    async function getCountryInfo(query){
-        // Ищем название страны в запросе
-        const l = query.toLowerCase();
-        // пробуем найти в локальной базе
-        for(const key in LOCAL_DB){
-            if(l.includes(key)){
-                const d = LOCAL_DB[key];
-                return `🤖 <b>${key.toUpperCase()}</b><br>🏛️ Столица: <b>${d.capital}</b><br>🗣️ Язык: ${d.lang}<br>💰 Валюта: ${d.currency}<br>👥 Население: ${d.pop}<br>🌍 Континент: ${d.cont}<br>👤 Национальность: ${d.nation}`;
-            }
-        }
-        // Если нет в локальной - тянем с restcountries.com
-        try{
-            // вытаскиваем последнее слово как возможную страну
-            const countryName = query.replace(/[^a-zA-Zа-яА-Я\s]/g,'').split(' ').filter(Boolean).pop();
-            const res = await fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(countryName)}?fields=name,capital,languages,currencies,population,continents,demonyms`);
-            if(!res.ok) throw new Error();
-            const data = await res.json();
-            const c = data[0];
-            return `🤖 <b>${c.name.common}</b><br>🏛️ Столица: <b>${c.capital?.[0] || '-'}</b><br>🗣️ Язык: ${Object.values(c.languages||{}).join(', ')}<br>💰 Валюта: ${Object.values(c.currencies||{}).map(v=>v.name+' ('+v.symbol+')').join(', ')}<br>👥 Население: ${c.population.toLocaleString()}<br>🌍 Континент: ${c.continents?.[0]}<br>👤 Жителей называют: ${c.demonyms?.eng?.m || '-'}`;
-        }catch(e){
-            return null;
-        }
-    }
+  function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  function addMsg(html,isUser){
+    const el=document.createElement('div');
+    el.style.cssText=isUser?"align-self:flex-end;background:#1f6feb;color:#fff;padding:5px 8px;border-radius:10px 2px 10px 10px;max-width:80%;font-size:11.5px":"align-self:flex-start;background:#161b22;border:1px solid #30363d;padding:6px 8px;border-radius:2px 10px 10px 10px;max-width:85%;font-size:11.5px";
+    el.innerHTML=isUser?`👤 ${esc(html)}`:html;
+    chat.appendChild(el); chat.scrollTop=chat.scrollHeight;
+  }
 
-    let busy=false;
-    async function handle(){
-        if(busy) return;
-        const q = input.value.trim();
-        if(!q) return;
-        addMsg(q, true);
-        input.value='';
-        
-        if(!isGeoQuery(q)){
-            addMsg(`⛔ Я отвечаю <b>только</b> на темы: страны, столицы, города, села, языки, национальности, валюты, население, континенты, координаты, карты, геология, экология. Задай вопрос по географии.`, false);
-            return;
-        }
-
-        busy=true; btn.disabled=true; btn.textContent='...';
-        addMsg(`⏳ Ищу данные по запросу "${escapeHtml(q)}"...`, false);
-
-        let answer = await getCountryInfo(q);
-        chat.lastChild.remove(); // убираем "ищу..."
-
-        if(answer){
-            addMsg(answer, false);
-        } else {
-            addMsg(`🤖 Запрос по объекту <b>"${escapeHtml(q)}"</b> - это география. Уточни: тебя интересует столица, язык, валюта или население? Напиши например "столица Бразилии".`, false);
-        }
-        busy=false; btn.disabled=false; btn.textContent='Спросить'; input.focus();
-    }
-
-    btn.addEventListener('click', handle);
-    input.addEventListener('keydown', e=>{ if(e.key==='Enter') handle(); });
+  window.executeAIAssistant=function(){
+    const q=input.value.trim(); if(!q) return;
+    addMsg(q,true); input.value='';
+    const l=q.toLowerCase();
+    const isGeo=geoKeywords.some(k=>l.includes(k));
+    setTimeout(()=>{
+      if(!isGeo){ addMsg(`⛔ Только география: страны, города, районы, села.`); return; }
+      const key=Object.keys(DB).find(k=>l.includes(k));
+      addMsg(key? `🤖 ${DB[key]}` : `🤖 Запрос "${esc(q)}" принят. Уточни: столица/язык/население?`, false);
+    },200);
+  };
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') executeAIAssistant(); });
 })();
 </script>
