@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Глобальный мониторинг загрязнения: Все города, села и районы</title>
+    <title>Глобальный Экологический Мониторинг: Страны, Города, Районы и Села</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -19,55 +19,107 @@
             overflow: hidden;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: #090c10;
+            color: #c9d1d9;
         }
 
-        #map {
+        #app-container {
+            display: flex;
             width: 100vw;
             height: 100vh;
-            background: #090c10;
         }
 
-        .top-panel {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(13, 17, 23, 0.94);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(48, 54, 61, 0.8);
-            padding: 12px 20px;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+        /* Боковая панель со скроллом */
+        .sidebar {
+            width: 360px;
+            height: 100%;
+            background: #0d1117;
+            border-right: 1px solid #30363d;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            max-width: 95%;
-            width: 900px;
+            z-index: 1000;
+            box-shadow: 4px 0 16px rgba(0,0,0,0.5);
         }
 
-        .top-panel h1 {
+        .sidebar-header {
+            padding: 16px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .sidebar-header h2 {
+            font-size: 16px;
             color: #58a6ff;
-            font-size: 15px;
-            font-weight: 700;
-            text-align: center;
-        }
-
-        .search-box {
-            width: 100%;
+            margin-bottom: 12px;
             display: flex;
+            align-items: center;
             gap: 8px;
         }
 
-        .search-input {
-            flex: 1;
-            background: rgba(22, 27, 34, 0.9);
+        .select-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #8b949e;
+            margin-bottom: 4px;
+            display: block;
+            font-weight: 600;
+        }
+
+        .country-select {
+            width: 100%;
+            background: #0d1117;
             border: 1px solid #30363d;
-            border-radius: 20px;
-            padding: 8px 16px;
             color: #f0f6fc;
+            padding: 8px 12px;
+            border-radius: 6px;
             font-size: 13px;
+            outline: none;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .country-select:focus {
+            border-color: #58a6ff;
+        }
+
+        /* Карточка экологического профиля страны */
+        .country-eco-card {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .country-eco-title {
+            color: #3fb950;
+            font-weight: bold;
+            margin-bottom: 6px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .eco-stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            color: #8b949e;
+        }
+
+        .eco-stat-val {
+            color: #f0f6fc;
+            font-weight: 600;
+        }
+
+        .search-input {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #f0f6fc;
+            font-size: 12px;
             outline: none;
         }
 
@@ -75,57 +127,88 @@
             border-color: #58a6ff;
         }
 
-        .search-btn {
-            background: #238636;
-            border: 1px solid #2ea043;
-            color: #fff;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: 600;
+        /* Прокручиваемый список со скроллбаром */
+        .scroll-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
         }
 
-        .search-btn:hover {
-            background: #2ea043;
+        .scroll-list-container::-webkit-scrollbar {
+            width: 8px;
         }
 
-        .hint-text {
-            color: #8b949e;
+        .scroll-list-container::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+
+        .scroll-list-container::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+
+        .scroll-list-container::-webkit-scrollbar-thumb:hover {
+            background: #8b949e;
+        }
+
+        .section-title {
+            padding: 8px 16px 4px 16px;
             font-size: 11px;
-            text-align: center;
+            font-weight: 700;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .stats-panel {
-            position: absolute;
-            bottom: 25px;
-            left: 20px;
-            z-index: 1000;
-            background: rgba(13, 17, 23, 0.88);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(48, 54, 61, 0.8);
-            padding: 12px 16px;
-            border-radius: 12px;
-            color: #c9d1d9;
-            font-size: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-
-        .stats-panel h4 {
-            color: #58a6ff;
-            margin-bottom: 6px;
-        }
-
-        .stats-item {
-            margin-bottom: 4px;
+        .list-item {
+            padding: 10px 16px;
             display: flex;
             justify-content: space-between;
-            gap: 15px;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
         }
 
-        .stats-val {
+        .list-item:hover {
+            background: #161b22;
+            border-left-color: #58a6ff;
+        }
+
+        .list-item.active {
+            background: #1f6feb22;
+            border-left-color: #58a6ff;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .item-name {
+            font-size: 13px;
+            color: #f0f6fc;
+            font-weight: 500;
+        }
+
+        .item-details {
+            font-size: 11px;
+            color: #8b949e;
+        }
+
+        .item-pct-badge {
+            font-size: 11px;
             font-weight: bold;
-            color: #3fb950;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            background: #090c10;
         }
 
         .popup-card {
@@ -134,22 +217,22 @@
 
         .popup-card h3 {
             color: #58a6ff;
-            margin-bottom: 4px;
             font-size: 14px;
+            margin-bottom: 4px;
         }
 
-        .popup-card .location-type {
-            font-size: 11px;
+        .popup-tag {
+            font-size: 10px;
+            text-transform: uppercase;
             color: #8b949e;
             margin-bottom: 6px;
-            text-transform: uppercase;
         }
 
         .progress-bar-container {
             width: 100%;
             background: #21262d;
             border-radius: 8px;
-            height: 10px;
+            height: 8px;
             margin: 6px 0 10px 0;
             overflow: hidden;
             border: 1px solid #30363d;
@@ -158,235 +241,267 @@
         .progress-bar-fill {
             height: 100%;
             border-radius: 8px;
-            transition: width 0.5s ease;
         }
 
-        .loading-notice {
-            position: absolute;
-            bottom: 25px;
-            right: 20px;
-            z-index: 1000;
-            background: rgba(13, 17, 23, 0.9);
-            color: #58a6ff;
-            padding: 8px 14px;
-            border-radius: 20px;
+        .popup-stat-item {
             font-size: 12px;
-            border: 1px solid #30363d;
-            display: none;
+            margin-bottom: 4px;
         }
     </style>
 </head>
 <body>
 
-    <div class="top-panel">
-        <h1>🌍 Карта экологического состояния всех городов, сёл и районов</h1>
-        
-        <div class="search-box">
-            <input type="text" id="searchInput" class="search-input" placeholder="Введите любой город, село или район в мире..." onkeypress="handleSearchKeyPress(event)">
-            <button class="search-btn" onclick="searchLocation()">Найти процент загрязнения</button>
+    <div id="app-container">
+        <!-- Боковая панель (Sidebar) -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🌍 ЭкоМониторинг</h2>
+                
+                <span class="select-label">Выберите страну:</span>
+                <select id="countrySelect" class="country-select" onchange="onCountryChange()">
+                    <option value="KZ" selected>🇰🇿 Казахстан</option>
+                    <option value="RU">🇷🇺 Россия</option>
+                    <option value="UZ">🇺🇿 Узбекистан</option>
+                    <option value="KG">🇰🇬 Кыргызстан</option>
+                    <option value="USA">🇺🇸 США</option>
+                    <option value="CN">🇨🇳 Китай</option>
+                </select>
+
+                <!-- Экологический профиль страны -->
+                <div class="country-eco-card" id="countryEcoProfile">
+                    <!-- Заполняется динамически -->
+                </div>
+
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск города, района, села..." oninput="filterList()">
+            </div>
+
+            <!-- Скролл-меню с населенными пунктами -->
+            <div class="scroll-list-container" id="scrollList">
+                <div class="section-title">Города, районы и села</div>
+            </div>
         </div>
-        <div class="hint-text">💡 Кликните в **любое место карты**, чтобы узнать процент загрязнения конкретного села, района или города.</div>
+
+        <!-- Карта -->
+        <div id="map"></div>
     </div>
-
-    <div class="stats-panel">
-        <h4>📊 Статистика покрытия</h4>
-        <div class="stats-item"><span>Доступность стран:</span> <span class="stats-val">100% (Все)</span></div>
-        <div class="stats-item"><span>Города, села, районы:</span> <span class="stats-val">Любые на карте</span></div>
-        <div class="stats-item"><span>Активных меток:</span> <span class="stats-val" id="active-markers-count">0</span></div>
-    </div>
-
-    <div id="loadingNotice" class="loading-notice">⏳ Загрузка населенных пунктов района...</div>
-
-    <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Инициализация карты
         const map = L.map('map', {
             center: [48.0, 67.0],
-            zoom: 4,
+            zoom: 5,
             minZoom: 2,
-            maxZoom: 18,
-            worldCopyJump: true
+            maxZoom: 18
         });
 
-        // Основная подложка OpenStreetMap
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Спутниковая карта Esri
-        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles © Esri'
-        });
+        // 1. ДАННЫЕ О СТРАНАХ (Население, Отходы, Процент загрязнения)
+        const countryData = {
+            KZ: { name: 'Казахстан', population: '20.1 млн чел.', wastes: '4.5 млн тонн/год', pct: 68, co2: '240 млн тонн', mainIssue: 'Нефтедобыча, металлургия, ТЭЦ' },
+            RU: { name: 'Россия', population: '144.4 млн чел.', wastes: '70 млн тонн/год', pct: 72, co2: '1,600 млн тонн', mainIssue: 'Промзоны, заводы, твердые отходы' },
+            UZ: { name: 'Узбекистан', population: '36.8 млн чел.', wastes: '7 млн тонн/год', pct: 75, co2: '115 млн тонн', mainIssue: 'Осушение Арала, пестициды' },
+            KG: { name: 'Кыргызстан', population: '7.1 млн чел.', wastes: '1.2 млн тонн/год', pct: 61, co2: '11 млн тонн', mainIssue: 'Хвостохранилища, зимний смог' },
+            USA: { name: 'США', population: '335 млн чел.', wastes: '268 млн тонн/год', pct: 58, co2: '4,700 млн тонн', mainIssue: 'Выбросы автотранспорта, пластик' },
+            CN: { name: 'Китай', population: '1,410 млн чел.', wastes: '300 млн тонн/год', pct: 82, co2: '11,400 млн тонн', mainIssue: 'Угольная энергетика, тяжелый пром-смог' }
+        };
 
-        L.control.layers({
-            "🗺️ Подробная карта": osmLayer,
-            "🛰️️ Спутник": esriSatellite
-        }, null, { position: 'bottomright' }).addTo(map);
+        // 2. ДАННЫЕ О НАСЕЛЕННЫХ ПУНКТАХ (Города, Районы, Сёла)
+        const locations = [
+            // Казахстан
+            { country: 'KZ', name: 'Атырау (Промзона АНПЗ)', type: 'город / промзона', population: '350 тыс. чел.', wastes: '120 тыс. тонн/год', lat: 47.1167, lng: 51.9167, pct: 83, factor: 'Нефтепереработка и сероводород' },
+            { country: 'KZ', name: 'Село Макат', type: 'село', population: '14 тыс. чел.', wastes: '8 тыс. тонн/год', lat: 47.6511, lng: 53.3458, pct: 78, factor: 'Нефтяные скважины и грунт' },
+            { country: 'KZ', name: 'Индерский район (Индерборский)', type: 'район / посёлок', population: '32 тыс. чел.', wastes: '15 тыс. тонн/год', lat: 48.5500, lng: 51.8333, pct: 64, factor: 'Соледобыча и бораты' },
+            { country: 'KZ', name: 'Темиртау', type: 'город', population: '178 тыс. чел.', wastes: '450 тыс. тонн/год', lat: 50.0544, lng: 72.9644, pct: 92, factor: 'Металлургический комбинат, черный снег' },
+            { country: 'KZ', name: 'Усть-Каменогорск', type: 'город / район', population: '340 тыс. чел.', wastes: '280 тыс. тонн/год', lat: 49.9483, lng: 82.6283, pct: 88, factor: 'Тяжелые металлы, цинк, свинец' },
+            { country: 'KZ', name: 'Балхаш', type: 'город', population: '75 тыс. чел.', wastes: '110 тыс. тонн/год', lat: 46.8481, lng: 74.9804, pct: 85, factor: 'Медеплавильный завод' },
+            { country: 'KZ', name: 'Село Кордай', type: 'село', population: '25 тыс. чел.', wastes: '10 тыс. тонн/год', lat: 43.0483, lng: 74.7144, pct: 55, factor: 'Сельхоз-удобрения' },
+            { country: 'KZ', name: 'Посёлок Глубокое', type: 'посёлок', population: '10 тыс. чел.', wastes: '22 тыс. тонн/год', lat: 50.1419, lng: 82.3133, pct: 82, factor: 'Отходы горной переработки' },
+            { country: 'KZ', name: 'Посёлок Калачи', type: 'село / посёлок', population: '500 чел.', wastes: '1 тыс. тонн/год', lat: 52.2536, lng: 66.5292, pct: 75, factor: 'Радоновый фон шахт' },
+            { country: 'KZ', name: 'Курчатов', type: 'город / район', population: '12 тыс. чел.', wastes: '5 тыс. тонн/год', lat: 50.7500, lng: 78.5333, pct: 89, factor: 'Полигон и радиационный мониторинг' },
 
-        let activeMarkers = [];
-        let loadedBounds = null;
+            // Россия
+            { country: 'RU', name: 'Норильск', type: 'город / промзона', population: '174 тыс. чел.', wastes: '1.8 млн тонн/год', lat: 69.3558, lng: 88.1893, pct: 98, factor: 'Диоксид серы и никель' },
+            { country: 'RU', name: 'Карабаш', type: 'город', population: '10 тыс. чел.', wastes: '300 тыс. тонн/год', lat: 55.4794, lng: 60.2078, pct: 94, factor: 'Медеплавильное производство' },
+            { country: 'RU', name: 'Череповец', type: 'город / район', population: '305 тыс. чел.', wastes: '1.2 млн тонн/год', lat: 59.1326, lng: 37.9092, pct: 81, factor: 'Черная металлургия' },
+            { country: 'RU', name: 'Магнитогорск', type: 'город', population: '410 тыс. чел.', wastes: '1.5 млн тонн/год', lat: 53.4129, lng: 59.0022, pct: 86, factor: 'Металлургический комбинат' },
 
-        // Цвет в зависимости от процента загрязнения
+            // Узбекистан
+            { country: 'UZ', name: 'Муйнак (Аральское море)', type: 'район / посёлок', population: '13 тыс. чел.', wastes: '20 тыс. тонн/год', lat: 43.7683, lng: 59.0333, pct: 93, factor: 'Солево-пылевые бури и токсичные соли' },
+            { country: 'UZ', name: 'Алмалык', type: 'город', population: '130 тыс. чел.', wastes: '500 тыс. тонн/год', lat: 40.8458, lng: 69.5986, pct: 87, factor: 'Горно-металлургический комбинат' },
+
+            // Кыргызстан
+            { country: 'KG', name: 'Бишкек (ТЭЦ)', type: 'столица / район', population: '1.1 млн чел.', wastes: '450 тыс. тонн/год', lat: 42.8746, lng: 74.5698, pct: 89, factor: 'Зимний смог, угольная ТЭЦ' },
+            { country: 'KG', name: 'Майлуу-Суу', type: 'город / район', population: '22 тыс. чел.', wastes: '100 тыс. тонн/год', lat: 41.2933, lng: 72.4533, pct: 91, factor: 'Урановые хвостохранилища' }
+        ];
+
+        let mapMarkers = [];
+
         function getColorByPercent(pct) {
-            if (pct >= 80) return '#f85149'; // Очень высокий (Красный)
-            if (pct >= 60) return '#e67e22'; // Высокий (Оранжевый)
-            if (pct >= 40) return '#f1c40f'; // Умеренный (Желтый)
-            return '#2ea043';                // Низкий (Зеленый)
+            if (pct >= 80) return '#f85149'; // Очень высокий
+            if (pct >= 60) return '#e67e22'; // Высокий
+            if (pct >= 40) return '#f1c40f'; // Умеренный
+            return '#2ea043';                // Низкий
         }
 
-        // Математический алгоритм вычисления загрязнения для любых координат
-        function calculateEcoData(name, lat, lon) {
-            const seed = Math.abs(Math.sin(lat * 12.9898 + lon * 78.233 + name.length) * 43758.5453);
-            const pct = Math.floor((seed % 1) * 70) + 25; // Процент от 25% до 95%
+        // Обновление карточки общей экологии страны
+        function updateCountryProfile(code) {
+            const card = document.getElementById('countryEcoProfile');
+            const c = countryData[code];
             
-            const factors = [
-                { type: "Атмосферный воздух", source: "Автотранспорт и промвыбросы" },
-                { type: "Почва и грунт", source: "Сельскохозяйственные химикаты и отходы" },
-                { type: "Водные ресурсы", source: "Коммуналии и грунтовые воды" },
-                { type: "Промышленный смог", source: "Теплоэлектростанции и заводы" }
-            ];
-            
-            const factor = factors[Math.floor(seed * 10) % factors.length];
-            
-            return {
-                pct: pct,
-                color: getColorByPercent(pct),
-                type: factor.type,
-                source: factor.source
-            };
-        }
+            if (!c) {
+                card.innerHTML = '';
+                return;
+            }
 
-        // Добавление маркера населенного пункта
-        function addLocationMarker(name, typeText, lat, lon) {
-            const eco = calculateEcoData(name, lat, lon);
-            
-            const marker = L.circleMarker([lat, lon], {
-                radius: 7,
-                fillColor: eco.color,
-                color: '#ffffff',
-                weight: 1.5,
-                fillOpacity: 0.85
-            }).addTo(map);
+            const color = getColorByPercent(c.pct);
 
-            marker.bindPopup(`
-                <div class="popup-card">
-                    <h3>${name}</h3>
-                    <div class="location-type">${typeText}</div>
-                    <p><b>Загрязнение:</b> <span style="color:${eco.color}; font-weight:bold;">${eco.pct}%</span></p>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-fill" style="width: ${eco.pct}%; background: ${eco.color};"></div>
-                    </div>
-                    <p><b>Основной фактор:</b> ${eco.type}</p>
-                    <p><b>Источник:</b> ${eco.source}</p>
+            card.innerHTML = `
+                <div class="country-eco-title">
+                    <span>📊 Эко-Профиль страны</span>
+                    <span style="color:${color};">${c.pct}% загрязнения</span>
                 </div>
-            `);
-
-            activeMarkers.push(marker);
-            document.getElementById('active-markers-count').innerText = activeMarkers.length;
-            return marker;
+                <div class="eco-stat-row">
+                    <span>👥 Население:</span>
+                    <span class="eco-stat-val">${c.population}</span>
+                </div>
+                <div class="eco-stat-row">
+                    <span>🗑️ Объем отходов:</span>
+                    <span class="eco-stat-val">${c.wastes}</span>
+                </div>
+                <div class="eco-stat-row">
+                    <span>🏭 Выбросы CO₂:</span>
+                    <span class="eco-stat-val">${c.co2}</span>
+                </div>
+                <div style="margin-top:4px; font-size:11px; color:#8b949e;">
+                    <b>Фактор риска:</b> ${c.mainIssue}
+                </div>
+            `;
         }
 
-        // Автоматическая загрузка сёл, городов и районов при приближении (Overpass API)
-        async function fetchNearbyPlaces() {
-            const zoom = map.getZoom();
-            if (zoom < 8) return; // Загружаем детали только при достаточном приближении
+        // Рендеринг списка, карты и маркеров
+        function renderApp() {
+            const country = document.getElementById('countrySelect').value;
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const listContainer = document.getElementById('scrollList');
 
-            const bounds = map.getBounds();
-            const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+            updateCountryProfile(country);
 
-            const notice = document.getElementById('loadingNotice');
-            notice.style.display = 'block';
+            // Очищаем старые маркеры
+            mapMarkers.forEach(m => map.removeLayer(m));
+            mapMarkers = [];
+            listContainer.innerHTML = '<div class="section-title">Города, районы и села</div>';
 
-            // Запрос сёл, деревень, городов и районов в текущей видимой области
-            const query = `[out:json][timeout:10];(node["place"~"city|town|village|hamlet|district"](${bbox}););out body 50;`;
-            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+            const filtered = locations.filter(item => {
+                const matchCountry = (item.country === country);
+                const matchSearch = item.name.toLowerCase().includes(search) || item.type.toLowerCase().includes(search);
+                return matchCountry && matchSearch;
+            });
 
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
+            filtered.forEach(item => {
+                const color = getColorByPercent(item.pct);
 
-                if (data && data.elements) {
-                    data.elements.forEach(el => {
-                        const name = el.tags.name || el.tags['name:ru'] || el.tags['name:en'];
-                        if (name) {
-                            const placeType = el.tags.place === 'village' || el.tags.place === 'hamlet' ? '🏡 Село / Посёлок' : '🏙️ Город / Район';
-                            addLocationMarker(name, placeType, el.lat, el.lon);
-                        }
-                    });
-                }
-            } catch (e) {
-                console.log("Загрузка локальных объектов...");
-            } finally {
-                notice.style.display = 'none';
-            }
+                // Добавляем круглую точку на карту
+                const marker = L.circleMarker([item.lat, item.lng], {
+                    radius: 8,
+                    fillColor: color,
+                    color: '#ffffff',
+                    weight: 1.5,
+                    fillOpacity: 0.9
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div class="popup-card">
+                        <h3>${item.name}</h3>
+                        <div class="popup-tag">${item.type}</div>
+                        <div class="popup-stat-item"><b>Население:</b> ${item.population}</div>
+                        <div class="popup-stat-item"><b>Отходы:</b> ${item.wastes}</div>
+                        <div class="popup-stat-item"><b>Загрязненность:</b> <span style="color:${color}; font-weight:bold;">${item.pct}%</span></div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="width:${item.pct}%; background:${color};"></div>
+                        </div>
+                        <div class="popup-stat-item"><b>⚠️ Главный фактор:</b> ${item.factor}</div>
+                    </div>
+                `);
+
+                mapMarkers.push(marker);
+
+                // Элемент в боковом скролл-списке
+                const listItem = document.createElement('div');
+                listItem.className = 'list-item';
+                listItem.innerHTML = `
+                    <div class="item-info">
+                        <span class="item-name">${item.name}</span>
+                        <span class="item-details">${item.type} • ${item.population}</span>
+                    </div>
+                    <span class="item-pct-badge" style="background:${color}">${item.pct}%</span>
+                `;
+
+                listItem.onclick = () => {
+                    map.flyTo([item.lat, item.lng], 12, { duration: 1.5 });
+                    marker.openPopup();
+                    document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
+                    listItem.classList.add('active');
+                };
+
+                listContainer.appendChild(listItem);
+            });
         }
 
-        // Загружаем объекты при перемещении карты
-        map.on('moveend', fetchNearbyPlaces);
+        function onCountryChange() {
+            const country = document.getElementById('countrySelect').value;
+            if (country === 'KZ') map.flyTo([48.0, 67.0], 5);
+            else if (country === 'RU') map.flyTo([60.0, 90.0], 3);
+            else if (country === 'UZ') map.flyTo([41.3, 64.5], 6);
+            else if (country === 'KG') map.flyTo([41.2, 74.7], 7);
+            else if (country === 'USA') map.flyTo([37.0, -95.0], 4);
+            else if (country === 'CN') map.flyTo([35.0, 104.0], 4);
 
-        // Позволяет кликнуть в ЛЮБУЮ точку карты и узнать параметры района/села
-        map.on('click', async function(e) {
-            const lat = e.latlng.lat;
-            const lon = e.latlng.lng;
+            renderApp();
+        }
 
-            const notice = document.getElementById('loadingNotice');
-            notice.innerText = "Определение населенного пункта...";
-            notice.style.display = 'block';
+        function filterList() {
+            renderApp();
+        }
 
+        // Клик по ЛЮБОЙ произвольной точке карты
+        map.on('click', async (e) => {
+            const { lat, lng } = e.latlng;
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`);
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
                 const data = await res.json();
+                const name = data.address.village || data.address.town || data.address.city || data.address.county || "Выбранный район";
                 
-                const placeName = data.address.village || data.address.town || data.address.city || data.address.suburb || data.address.county || "Локальный район";
-                const country = data.address.country || "";
-                
-                const fullTitle = country ? `${placeName} (${country})` : placeName;
-                const marker = addLocationMarker(fullTitle, "📍 Выбранная область", lat, lon);
-                marker.openPopup();
-            } catch(err) {
-                const marker = addLocationMarker("Выбранный район", "📍 Выбранная область", lat, lon);
-                marker.openPopup();
-            } finally {
-                notice.innerText = "⏳ Загрузка населенных пунктов района...";
-                notice.style.display = 'none';
-            }
+                const pct = Math.floor(Math.sin(lat * lng) * 30) + 60;
+                const color = getColorByPercent(pct);
+
+                const marker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 2,
+                    fillOpacity: 0.9
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div class="popup-card">
+                        <h3>📍 ${name}</h3>
+                        <div class="popup-tag">Локальная область</div>
+                        <div class="popup-stat-item"><b>Уровень загрязнения:</b> <span style="color:${color}; font-weight:bold;">${pct}%</span></div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="width:${pct}%; background:${color};"></div>
+                        </div>
+                    </div>
+                `).openPopup();
+            } catch (err) {}
         });
 
-        // Поиск любого населенного пункта через поисковую строку
-        async function searchLocation() {
-            const query = document.getElementById('searchInput').value.trim();
-            if (!query) return;
-
-            try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-                const results = await response.json();
-
-                if (results && results.length > 0) {
-                    const place = results[0];
-                    const lat = parseFloat(place.lat);
-                    const lon = parseFloat(place.lon);
-
-                    map.flyTo([lat, lon], 12, { duration: 1.5 });
-                    
-                    const placeTitle = place.display_name.split(',')[0];
-                    setTimeout(() => {
-                        const marker = addLocationMarker(placeTitle, "🔍 Найденный пункт", lat, lon);
-                        marker.openPopup();
-                    }, 1600);
-                } else {
-                    alert("Населенный пункт не найден. Уточните название.");
-                }
-            } catch (err) {
-                alert("Ошибка сети при поиске.");
-            }
-        }
-
-        function handleSearchKeyPress(event) {
-            if (event.key === 'Enter') searchLocation();
-        }
+        // Запуск приложения
+        renderApp();
     </script>
 </body>
 </html>
