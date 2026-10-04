@@ -86,6 +86,27 @@
             font-weight: 600;
         }
 
+        /* Кнопка Мое Местоположение */
+        .geo-btn {
+            background: #1f6feb;
+            border: 1px solid #388bfd;
+            color: #ffffff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .geo-btn:hover {
+            background: #388bfd;
+            box-shadow: 0 0 10px rgba(56, 139, 253, 0.5);
+        }
+
         /* Панель глобальной статистики */
         .stats-panel {
             position: absolute;
@@ -118,6 +139,28 @@
         .stats-val {
             font-weight: bold;
             color: #3fb950;
+        }
+
+        /* Анимация пульсации метки пользователя */
+        @keyframes userPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 18px rgba(88, 166, 255, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(88, 166, 255, 0);
+            }
+        }
+
+        .user-location-marker {
+            width: 16px;
+            height: 16px;
+            background: #58a6ff;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: userPulse 2s infinite;
         }
 
         /* Кастомизация всплывающих окон (Popup) */
@@ -171,14 +214,15 @@
 
     <!-- Верхняя интерактивная панель -->
     <div class="top-panel">
-        <h1>🌏 Всемирная Система Мониторинга Загрязнений (195+ Стран)</h1>
+        <h1>🌍 Всемирная Система Мониторинга Загрязнений (195+ Стран)</h1>
         <div class="filter-container">
             <button class="filter-btn active" onclick="filterType('all', this)">🌐 Все страны и объекты</button>
             <button class="filter-btn" onclick="filterType('air', this)">💨 Воздух и Смог</button>
             <button class="filter-btn" onclick="filterType('ocean', this)">🌊 Пластик и Океаны</button>
             <button class="filter-btn" onclick="filterType('soil', this)">🧪 Почва и Промышленность</button>
-            <button class="filter-btn" onclick="filterType('radiation', this)">☢️ Радиационный фон</button>
+            <button class="filter-btn" onclick="filterType('radiation', this)">☢️ Радиация</button>
             <button class="filter-btn" onclick="filterType('deforest', this)">🌲 Вырубка лесов</button>
+            <button class="geo-btn" onclick="locateUser()">📍 Мое местоположение</button>
         </div>
     </div>
 
@@ -204,7 +248,7 @@
             worldCopyJump: true
         });
 
-        // Слой OpenStreetMap с поддержкой всех стран и русскоязычных наименований
+        // Слой OpenStreetMap
         const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
@@ -220,7 +264,64 @@
             "🛰️ Спутниковая карта": esriSatellite
         }, null, { position: 'bottomright' }).addTo(map);
 
-        // Полный глобальный список всех стран мира с координатами центров
+        // Переменные для хранения маркера геолокации
+        let userMarker = null;
+        let userCircle = null;
+
+        // Функция определения геолокации пользователя
+        function locateUser() {
+            if (!navigator.geolocation) {
+                alert("Геолокация не поддерживается вашим браузером.");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    // Удаление предыдущей метки геолокации
+                    if (userMarker) map.removeLayer(userMarker);
+                    if (userCircle) map.removeLayer(userCircle);
+
+                    // Создание кастомной анимированной метки
+                    const userIcon = L.divIcon({
+                        className: 'user-location-marker',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    });
+
+                    userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
+                    userMarker.bindPopup(`
+                        <div class="popup-card">
+                            <h3>📍 Вы находитесь здесь</h3>
+                            <p><b>Широта:</b> ${lat.toFixed(4)}</p>
+                            <p><b>Долгота:</b> ${lng.toFixed(4)}</p>
+                            <p><b>Точность:</b> ~${Math.round(accuracy)} м</p>
+                        </div>
+                    `).openPopup();
+
+                    // Окружность точности
+                    userCircle = L.circle([lat, lng], {
+                        radius: accuracy,
+                        color: '#58a6ff',
+                        fillColor: '#58a6ff',
+                        fillOpacity: 0.15,
+                        weight: 1
+                    }).addTo(map);
+
+                    // Плавное перемещение карты к пользователю
+                    map.flyTo([lat, lng], 12, { duration: 2 });
+                },
+                (error) => {
+                    alert("Не удалось определить местоположение. Пожалуйста, разрешите доступ к геопозиции в браузере.");
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+
+        // Полная глобальная база данных стран и объектов
         const worldCountries = [
             { name: "Казахстан", lat: 48.0196, lng: 66.9237, type: "soil", level: "76%", color: "#e67e22", source: "Промышленные выбросы и нефтяная отрасль", impact: "Нагрузка на почву и воздух около ТЭЦ и месторождений." },
             { name: "Россия", lat: 61.5240, lng: 105.3188, type: "air", level: "72%", color: "#e67e22", source: "Тяжелая металлургия и угольные ТЭЦ", impact: "Выбросы диоксида серы в промышленных центрах." },
@@ -246,7 +347,7 @@
             { name: "Узбекистан", lat: 41.3775, lng: 64.5853, type: "ocean", level: "93%", color: "#f85149", source: "Соляно-пылевой след Арала", impact: "Вынос солей и токсичных пестицидов." }
         ];
 
-        // Дополнительные страны для достижения полного охвата 195+ стран мира
+        // Дополнительные страны для полного покрытия 195+ государств
         const extraCountryNames = [
             ["Афганистан",33.9391,67.7100],["Албания",41.1533,20.1683],["Алжир",28.0339,1.6596],["Ангола",-11.2027,17.8739],
             ["Армения",40.0691,45.0382],["Австрия",47.5162,14.5501],["Азербайджан",40.1431,47.5769],["Бангладеш",23.6850,90.3563],
@@ -257,7 +358,6 @@
             ["Израиль",31.0461,34.8516],["Италия",41.8719,12.5674],["Кения",-1.2921,36.8219],["Малайзия",4.2105,101.9758],["Норвегия",60.4720,8.4689]
         ];
 
-        // Расширение базы данных
         const types = ['air', 'soil', 'ocean', 'deforest'];
         const colors = { air: '#e67e22', soil: '#e67e22', ocean: '#8e44ad', deforest: '#f85149' };
 
@@ -276,7 +376,7 @@
             });
         });
 
-        // Дополнительно: Океанические мусорные пятна
+        // Океанические мусорные пятна
         const oceanSpots = [
             { name: "Тихоокеанское мусорное пятно", lat: 26.0, lng: -145.0, type: "ocean", level: "99%", color: "#8e44ad", source: "Мировой пластик", impact: "Критическое загрязнение океана." },
             { name: "Индийское мусорное пятно", lat: -10.0, lng: 75.0, type: "ocean", level: "85%", color: "#8e44ad", source: "Отходы рек Азии", impact: "Микропластик в море." },
@@ -284,10 +384,9 @@
         ];
 
         const fullDatabase = [...worldCountries, ...oceanSpots];
-
         let currentMarkers = [];
 
-        // Отрисовка маркеров
+        // Отрисовка точек
         function renderMarkers(filter = 'all') {
             currentMarkers.forEach(m => map.removeLayer(m));
             currentMarkers = [];
@@ -323,7 +422,6 @@
                 }
             });
 
-            // Обновление статистики
             document.getElementById('stat-points').innerText = totalRendered;
             document.getElementById('stat-critical').innerText = criticalCount;
         }
@@ -339,6 +437,9 @@
 
         // Запуск карт при загрузке
         renderMarkers('all');
+        
+        // Автоматический запрос геолокации при загрузке страницы
+        setTimeout(() => locateUser(), 1000);
     </script>
 </body>
 </html>
