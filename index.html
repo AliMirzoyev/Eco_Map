@@ -303,7 +303,7 @@ async function loadCountryData(){
   const key='country_'+code;
   if(cache[key]){ render(cache[key]); return; }
   try{
-    const res=await fetch(`https://nominatim.openstreetmap.org/search?country=${code}&format=json&addressdetails=1&limit=50&featuretype=settlement&email=eco@atyrau.kz`);
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?countrycodes=${code.toLowerCase()}&format=json&addressdetails=1&limit=50&featuretype=settlement&email=eco@atyrau.kz`);
     const data=await res.json();
     cache[key]=data; saveCache(); render(data);
   }catch(e){ list.innerHTML='<div class="loader" style="color:#f85149">Ошибка сети / Лимит</div>'; }
@@ -334,7 +334,7 @@ async function searchLocation(){
   const list=document.getElementById('resultsList'); list.innerHTML='<div class="loader">🔍 Поиск...</div>'; cluster.clearLayers();
   const code=document.getElementById('countrySelect').value;
   try{
-    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=${code}&limit=20&addressdetails=1&email=eco@atyrau.kz`);
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=${code.toLowerCase()}&limit=20&addressdetails=1&email=eco@atyrau.kz`);
     const data=await res.json(); 
     render(data); 
     if(data[0]) {
@@ -352,25 +352,19 @@ function getUserLocation(){
   navigator.geolocation.getCurrentPosition(async p=>{
     const lat=p.coords.latitude, lng=p.coords.longitude;
     map.flyTo([lat,lng], 12, {duration: 1.5});
-    
-    let locationName = `Точка (${lat.toFixed(2)}, ${lng.toFixed(2)})`;
     try {
         const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&email=eco@atyrau.kz`);
         const d=await r.json(); 
-        if(d && d.address) {
-            locationName = d.address.city || d.address.village || d.address.town || d.address.county || locationName;
-        }
+        const name=(d.address && (d.address.city||d.address.village||d.address.town)) || "Моя гео";
+        const pct=hashEco(lat,lng), color=getColor(pct);
+        const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${name}</b><br>Загрязнение ${pct}%`);
+        cluster.addLayer(m); m.openPopup();
+        getAIEcoReport(name);
     } catch(err) {
-        // Игнорируем сетевую ошибку обратного геокодирования и идем дальше с дефолтным именем
+        alert('Не удалось определить название места по координатам');
     }
-
-    const pct=hashEco(lat,lng), color=getColor(pct);
-    const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${locationName}</b><br>Загрязнение ${pct}%`);
-    cluster.addLayer(m); m.openPopup();
-    getAIEcoReport(locationName);
-
   },e=>{
-    alert('Ошибка геолокации: разрешите доступ к GPS и запускайте через сервер (Live Server / localhost).');
+    alert('Ошибка геолокации: убедитесь, что разрешили доступ к GPS и запускаете проект через сервер (Live Server / localhost).');
   },{timeout: 10000});
 }
 
@@ -381,3 +375,27 @@ init();
 </script>
 </body>
 </html>
+
+<style>
+@media (max-width: 768px){
+  #app{flex-direction:column}
+  .sidebar{width:100%!important;height:55vh!important;border-right:none;border-bottom:2px solid #30363d;order:2}
+  #map{width:100%!important;height:45vh!important;order:1;flex:none!important}
+  .header{padding:8px}
+  .custom-select,.input{font-size:15px!important}
+  #resultsList{max-height:140px;}
+}
+#mobileToggle{
+  display:none;position:fixed;top:10px;right:10px;z-index:999999;
+  background:#1f6feb;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-weight:700;font-size:12px;box-shadow:0 4px 12px #000;
+}
+@media (max-width:768px){#mobileToggle{display:block}}
+.sidebar.hidden{transform:translateY(100%);height:0!important;overflow:hidden}
+</style>
+
+<button id="mobileToggle" onclick="document.querySelector('.sidebar').classList.toggle('hidden'); setTimeout(()=>map.invalidateSize(),300)">☰ Список / Карта</button>
+
+<script>
+window.addEventListener('load', ()=>{ setTimeout(()=>{ if(window.map) map.invalidateSize(); }, 500); });
+window.addEventListener('resize', ()=>{ if(window.map) map.invalidateSize(); });
+</script>
