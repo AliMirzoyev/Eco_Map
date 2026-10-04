@@ -103,3 +103,25 @@ function askMiniAI(){
 
 aiMiniInput.addEventListener('keydown', e=>{ if(e.key==='Enter') askMiniAI(); });
 </script>
+
+async function getAIEcoReport(locationName) {
+    const aiText = document.getElementById('aiTextContent');
+    if (!aiText) return;
+
+    aiText.innerHTML = `⏳ ИИ собирает актуальные данные и историю для: <b>${locationName}</b>...`;
+
+    const promptText = `Предоставь подробную, структурированную справку на сегодняшний день (2026 год) для локации: "${locationName}".
+Включи в ответ:
+1. Историческую справку (основание, ключевые вехи, развитие страны, региона или села).
+2. Экологическую обстановку (строго фокус на воду, моря, океаны, прибрежные зоны, разливы, химикаты, пластик, если применимо).
+Правила: Никакой пустой лирики, только сухие факты, цифры и четкая структура по пунктам на русском языке.`;
+
+    try {
+        const response = await fetch("https://text.pollinations.ai/" + encodeURIComponent(promptText));
+        const text = await response.text();
+        // Заменяем переносы строк на теги <br> для красивого отображения в блоке
+        aiText.innerHTML = text.replace(/\n/g, '<br>');
+    } catch (e) {
+        aiText.innerHTML = `❌ Ошибка загрузки данных для ${locationName}. Проверьте подключение.`;
+    }
+}
