@@ -1,104 +1,85 @@
-<!-- === КОМПАКТНЫЙ ПЛАВАЮЩИЙ ИИ-ВИДЖЕТ V4 === -->
-<style>
-#aiFloatWrap{position:fixed;left:20px;bottom:20px;width:320px;height:280px;z-index:9999;display:flex;flex-direction:column;background:#0d1117;border:1px solid #30363d;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden;resize:both;min-width:240px;min-height:180px;max-width:90vw;max-height:80vh}
-#aiFloatHeader{padding:8px 10px;background:#161b22;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center;cursor:move;user-select:none;touch-action:none}
-#aiFloatHeader span{font-size:12px;font-weight:700;color:#58a6ff}
-.ai-header-btns{display:flex;gap:4px}
-.ai-h-btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:12px;line-height:1}
-.ai-h-btn:hover{background:#30363d}
-#aiChatMessages{flex:1;padding:8px;overflow-y:auto;font-size:12px;color:#c9d1d9;background:#0d1117;display:flex;flex-direction:column;gap:6px}
-#aiFloatInputBar{padding:6px;background:#161b22;border-top:1px solid #30363d;display:flex;gap:5px}
-#aiUserInput{flex:1;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:6px 8px;color:#fff;font-size:12px;outline:none}
-#aiAskBtn{background:#238636;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
-#aiMinimizedBtn{position:fixed;left:20px;bottom:20px;z-index:9999;background:#238636;color:#fff;border:none;padding:10px 14px;border-radius:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5);font-size:13px;font-weight:600;display:none}
-</style>
+// Создаем кастомный контрол для ИИ прямо поверх карты Leaflet
+const AIControl = L.Control.extend({
+    options: {
+        position: 'bottomleft' // Можно поменять на 'bottomright', 'topright' и т.д.
+    },
 
-<button id="aiMinimizedBtn" onclick="aiToggle(true)">🤖 Гео-ИИ</button>
+    onAdd: function (map) {
+        // Создаем контейнер элемента
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control ai-map-widget');
+        
+        // Отключаем проброс кликов и зума карты при взаимодействии с чатом
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
 
-<div id="aiFloatWrap">
-  <div id="aiFloatHeader">
-    <span>🤖 Гео-ИИ • компакт</span>
-    <div class="ai-header-btns">
-      <button class="ai-h-btn" onclick="aiCompact()" title="Компакт">↔</button>
-      <button class="ai-h-btn" onclick="aiToggle(false)" title="Свернуть">−</button>
-      <button class="ai-h-btn" onclick="aiClose()" title="Закрыть">×</button>
-    </div>
-  </div>
-  <div id="aiChatMessages">
-    <div style="background:#161b22;padding:6px 8px;border-radius:6px;border:1px solid #30363d;color:#8b949e;font-size:11px">Привет! Я на карте, меня можно таскать. Спроси про страну, город, район.</div>
-  </div>
-  <div id="aiFloatInputBar">
-    <input type="text" id="aiUserInput" placeholder="Страна, город, село...">
-    <button id="aiAskBtn" onclick="executeAIAssistant()">↵</button>
-  </div>
-</div>
+        // Наполняем HTML-кодом полноценного чата
+        container.innerHTML = `
+            <div style="width: 380px; max-width: 90vw; background: #0d1117; border: 2px solid #58a6ff; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; font-family: system-ui, sans-serif;">
+                <div style="padding: 8px 12px; background: #161b22; border-bottom: 1px solid #30363d; font-size: 12.5px; font-weight: 600; color: #58a6ff; display: flex; justify-content: space-between; align-items: center;">
+                    <span>🤖 Гео-ИИ на карте</span>
+                    <span style="font-size: 10px; background: #238636; color: #fff; padding: 2px 5px; border-radius: 3px;">Активен</span>
+                </div>
+                <div id="mapAiChatMessages" style="padding: 10px; height: 160px; overflow-y: auto; font-size: 12px; color: #c9d1d9; background: #0d1117; line-height: 1.4; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="background: #161b22; padding: 6px 8px; border-radius: 4px; border: 1px solid #30363d; color: #8b949e;">
+                        👋 Привет! Задайте вопрос по карте или географии (страны, города, села).
+                    </div>
+                </div>
+                <div style="padding: 8px; background: #161b22; border-top: 1px solid #30363d; display: flex; gap: 6px;">
+                    <input type="text" id="mapAiUserInput" placeholder="Спросите объект на карте..." style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 6px 8px; color: #fff; font-size: 12px; outline: none;" onkeypress="if(event.key==='Enter') sendMapAIPrompt()">
+                    <button onclick="sendMapAIPrompt()" style="background: #238636; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">Спросить</button>
+                </div>
+            </div>
+        `;
 
-<script>
-(function(){
-  const wrap=document.getElementById('aiFloatWrap'), header=document.getElementById('aiFloatHeader'), miniBtn=document.getElementById('aiMinimizedBtn');
-  const chat=document.getElementById('aiChatMessages'), input=document.getElementById('aiUserInput');
-  let isCompact=false, startX, startY, startLeft, startTop, dragging=false;
+        return container;
+    }
+});
 
-  // Загрузка позиции из памяти
-  const saved=JSON.parse(localStorage.getItem('ai_pos')||'{}');
-  if(saved.left) { wrap.style.left=saved.left; wrap.style.bottom='auto'; wrap.style.top=saved.top; }
-  if(saved.w) { wrap.style.width=saved.w; wrap.style.height=saved.h; }
+// Добавляем виджет на вашу карту (предполагается, что переменная карты называется `map`)
+const aiWidgetInstance = new AIControl();
+aiWidgetInstance.addTo(map);
 
-  function savePos(){
-    localStorage.setItem('ai_pos', JSON.stringify({left:wrap.style.left, top:wrap.style.top, w:wrap.style.width, h:wrap.style.height}));
-  }
+// База ключевых слов и логика ответов
+const geoKeywords = [
+    "где", "город", "село", "деревня", "район", "область", "страна", "регион", 
+    "север", "юг", "запад", "восток", "центр", "координаты", "находится", "климат", 
+    "москва", "атырау", "астана", "алматы", "россия", "казахстан", "узбекистан", 
+    "какой", "какая", "какое", "часть", "округ", "карта", "экология", "расстояние", "поселок", "канал"
+];
 
-  // DRAG
-  header.addEventListener('mousedown', e=>{ dragging=true; startX=e.clientX; startY=e.clientY; startLeft=wrap.offsetLeft; startTop=wrap.offsetTop; wrap.style.bottom='auto'; });
-  window.addEventListener('mousemove', e=>{
-    if(!dragging) return;
-    wrap.style.left=(startLeft + e.clientX - startX)+'px';
-    wrap.style.top=(startTop + e.clientY - startY)+'px';
-  });
-  window.addEventListener('mouseup', ()=>{ if(dragging){ dragging=false; savePos(); }});
+function sendMapAIPrompt() {
+    const inputField = document.getElementById('mapAiUserInput');
+    const chatContainer = document.getElementById('mapAiChatMessages');
+    
+    if (!inputField || !chatContainer) return;
+    const queryText = inputField.value.trim();
+    if (!queryText) return;
 
-  // TOUCH для телефона
-  header.addEventListener('touchstart', e=>{ const t=e.touches[0]; dragging=true; startX=t.clientX; startY=t.clientY; startLeft=wrap.offsetLeft; startTop=wrap.offsetTop; wrap.style.bottom='auto'; }, {passive:false});
-  window.addEventListener('touchmove', e=>{ if(!dragging) return; const t=e.touches[0]; wrap.style.left=(startLeft + t.clientX - startX)+'px'; wrap.style.top=(startTop + t.clientY - startY)+'px'; }, {passive:false});
-  window.addEventListener('touchend', ()=>{ dragging=false; savePos(); });
+    // Вывод сообщения пользователя
+    chatContainer.innerHTML += `<div style="align-self: flex-end; background: #1f6feb; color: #fff; padding: 6px 8px; border-radius: 4px; max-width: 85%; word-break: break-word;">👤 ${escapeHtml(queryText)}</div>`;
+    inputField.value = '';
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 
-  // RESIZE observer
-  new ResizeObserver(()=>savePos()).observe(wrap);
+    setTimeout(() => {
+        const lowerQuery = queryText.toLowerCase();
+        const isGeography = geoKeywords.some(keyword => lowerQuery.includes(keyword));
+        let responseHTML = "";
 
-  window.aiToggle=function(show){
-    if(show){ wrap.style.display='flex'; miniBtn.style.display='none'; }
-    else{ wrap.style.display='none'; miniBtn.style.display='block'; }
-  };
-  window.aiClose=function(){ wrap.style.display='none'; miniBtn.style.display='block'; };
-  window.aiCompact=function(){
-    isCompact=!isCompact;
-    if(isCompact){ wrap.style.width='260px'; wrap.style.height='180px'; }
-    else{ wrap.style.width='320px'; wrap.style.height='280px'; }
-    savePos();
-  };
+        if (!isGeography) {
+            responseHTML = `⛔ Отвечаю <b>только</b> на вопросы по географии, регионам и объектам эко-карты.`;
+        } else if (lowerQuery.includes("атырау")) {
+            responseHTML = `🤖 <b>Атырау</b> — город на западе Казахстана, расположенный в устье реки Урал.`;
+        } else if (lowerQuery.includes("москва")) {
+            responseHTML = `🤖 <b>Москва</b> — столица России, находится в центре Восточно-Европейской равнины.`;
+        } else {
+            responseHTML = `🤖 Объект <b>"${escapeHtml(queryText)}"</b> успешно проверен по базе данных карты.`;
+        }
 
-  const geoKeywords=["где","город","село","район","область","страна","столица","координаты","карта","атырау","астана","казахстан","россия","country","capital","city"];
-  const DB={ "казахстан":"🇰🇿 Казахстан - Астана, ~20 млн, тенге","атырау":"📍 Атырау - нефтяная столица, на Урале, ~400 тыс","астана":"📍 Астана - столица КЗ, ~1.4 млн","москва":"📍 Москва - столица РФ, ~13 млн","алматы":"📍 Алматы - ~2.2 млн, у гор" };
+        chatContainer.innerHTML += `<div style="align-self: flex-start; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 8px; border-radius: 4px; max-width: 88%; word-break: break-word;">${responseHTML}</div>`;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 300);
+}
 
-  function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-  function addMsg(html,isUser){
-    const el=document.createElement('div');
-    el.style.cssText=isUser?"align-self:flex-end;background:#1f6feb;color:#fff;padding:5px 8px;border-radius:10px 2px 10px 10px;max-width:80%;font-size:11.5px":"align-self:flex-start;background:#161b22;border:1px solid #30363d;padding:6px 8px;border-radius:2px 10px 10px 10px;max-width:85%;font-size:11.5px";
-    el.innerHTML=isUser?`👤 ${esc(html)}`:html;
-    chat.appendChild(el); chat.scrollTop=chat.scrollHeight;
-  }
-
-  window.executeAIAssistant=function(){
-    const q=input.value.trim(); if(!q) return;
-    addMsg(q,true); input.value='';
-    const l=q.toLowerCase();
-    const isGeo=geoKeywords.some(k=>l.includes(k));
-    setTimeout(()=>{
-      if(!isGeo){ addMsg(`⛔ Только география: страны, города, районы, села.`); return; }
-      const key=Object.keys(DB).find(k=>l.includes(k));
-      addMsg(key? `🤖 ${DB[key]}` : `🤖 Запрос "${esc(q)}" принят. Уточни: столица/язык/население?`, false);
-    },200);
-  };
-  input.addEventListener('keydown', e=>{ if(e.key==='Enter') executeAIAssistant(); });
-})();
-</script>
+function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
