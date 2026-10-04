@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Глобальный Эко-Мониторинг: Все Населенные Пункты Страны</title>
-    <!-- Leaflet CSS -->
+    <title>Глобальный Эко-Мониторинг Человечества</title>
+
+    <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet Geocoder (Живой глобальный поиск любого города/села/района) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -59,9 +66,9 @@
             background: #238636;
             color: #ffffff;
             border: none;
-            padding: 6px 10px;
+            padding: 6px 12px;
             border-radius: 6px;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
@@ -135,7 +142,11 @@
             outline: none;
         }
 
-        /* Скролл-список */
+        .search-input:focus {
+            border-color: #58a6ff;
+        }
+
+        /* Список кликабельных локаций */
         .scroll-list-container {
             flex: 1;
             overflow-y: auto;
@@ -211,7 +222,7 @@
         }
 
         .popup-card {
-            min-width: 230px;
+            min-width: 240px;
         }
 
         .popup-card h3 {
@@ -245,13 +256,22 @@
         .popup-stat-item {
             font-size: 12px;
             margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
         }
 
-        .status-loading {
-            padding: 16px;
-            text-align: center;
-            color: #58a6ff;
-            font-size: 13px;
+        /* Стиль для поиска прямо на карте */
+        .leaflet-control-geocoder {
+            background: #161b22 !important;
+            border: 1px solid #30363d !important;
+            border-radius: 8px !important;
+        }
+        .leaflet-control-geocoder-icon {
+            filter: invert(1);
+        }
+        .leaflet-control-geocoder-form input {
+            color: #fff !important;
+            background: #161b22 !important;
         }
     </style>
 </head>
@@ -267,12 +287,12 @@
                 </h2>
                 
                 <span class="select-label">Выберите страну:</span>
-                <select id="countrySelect" class="country-select" onchange="loadCountryData()">
+                <select id="countrySelect" class="country-select" onchange="onCountryChange()">
                     <option value="RU" selected>🇷🇺 Россия</option>
                     <option value="KZ">🇰🇿 Казахстан</option>
                     <option value="UZ">🇺🇿 Узбекистан</option>
                     <option value="KG">🇰🇬 Кыргызстан</option>
-                    <option value="US">🇺🇸 США</option>
+                    <option value="USA">🇺🇸 США</option>
                     <option value="CN">🇨🇳 Китай</option>
                     <option value="DE">🇩🇪 Германия</option>
                 </select>
@@ -280,24 +300,21 @@
                 <!-- Экологический профиль страны -->
                 <div class="country-eco-card" id="countryEcoProfile"></div>
 
-                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск города, района, села..." oninput="filterList()">
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Фильтр из списка..." oninput="filterList()">
             </div>
 
-            <!-- Скролл-список населенных пунктов -->
-            <div class="scroll-list-container" id="scrollList">
-                <div class="section-title" id="listTitle">Загрузка населенных пунктов...</div>
-            </div>
+            <!-- Скролл-список локаций -->
+            <div class="scroll-list-container" id="scrollList"></div>
         </div>
 
         <!-- Карта -->
         <div id="map"></div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Инициализация карты
         const map = L.map('map', {
-            center: [55.7558, 37.6173], // Москва по умолчанию
+            center: [55.7558, 37.6173], // Москва
             zoom: 5
         });
 
@@ -306,20 +323,48 @@
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Статистика по странам
-        const countryMeta = {
-            RU: { name: 'Россия', population: '144.4 млн чел.', wastes: '70 млн тонн/год', pct: 72, co2: '1,600 млн тонн', mainIssue: 'Промышленность, выбросы ТЭЦ, ТБО', center: [60.0, 90.0], zoom: 4 },
-            KZ: { name: 'Казахстан', population: '20.1 млн чел.', wastes: '4.5 млн тонн/год', pct: 68, co2: '240 млн тонн', mainIssue: 'Нефтедобыча, металлургия, ТЭЦ', center: [48.0, 67.0], zoom: 5 },
-            UZ: { name: 'Узбекистан', population: '36.8 млн чел.', wastes: '7 млн тонн/год', pct: 75, co2: '115 млн тонн', mainIssue: 'Осушение Арала, пестициды', center: [41.3, 64.5], zoom: 6 },
-            KG: { name: 'Кыргызстан', population: '7.1 млн чел.', wastes: '1.2 млн тонн/год', pct: 61, co2: '11 млн тонн', mainIssue: 'Хвостохранилища, зимний смог', center: [41.2, 74.7], zoom: 7 },
-            US: { name: 'США', population: '335 млн чел.', wastes: '268 млн тонн/год', pct: 58, co2: '4,700 млн тонн', mainIssue: 'Выбросы автотранспорта, пластик', center: [37.0, -95.0], zoom: 4 },
-            CN: { name: 'Китай', population: '1,410 млн чел.', wastes: '300 млн тонн/год', pct: 82, co2: '11,400 млн тонн', mainIssue: 'Угольная энергетика, пром-смог', center: [35.0, 104.0], zoom: 4 },
-            DE: { name: 'Германия', population: '84 млн чел.', wastes: '40 млн тонн/год', pct: 35, co2: '660 млн тонн', mainIssue: 'Автотранспорт, переход на зеленую энергетику', center: [51.1, 10.4], zoom: 6 }
+        // Встроенный глобальный поиск по ВСЕМ городам, районам и селам мира!
+        const geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: "🔍 Поиск ЛЮБОГО города, села, района..."
+        }).on('markgeocode', function(e) {
+            const bbox = e.geocode.bbox;
+            const center = e.geocode.center;
+            const name = e.geocode.name;
+            
+            map.fitBounds(bbox);
+            createEcoMarker(center.lat, center.lng, name, "Поисковый запрос");
+        }).addTo(map);
+
+        // Эко-данные стран
+        const countryData = {
+            RU: { name: 'Россия', population: '144.4 млн', cars: '45 млн авто', wastes: '70 млн тонн/год', pct: 72, co2: '1,600 млн тонн', center: [55.7558, 37.6173], zoom: 5 },
+            KZ: { name: 'Казахстан', population: '20.1 млн', cars: '5 млн авто', wastes: '4.5 млн тонн/год', pct: 68, co2: '240 млн тонн', center: [48.0, 67.0], zoom: 5 },
+            UZ: { name: 'Узбекистан', population: '36.8 млн', cars: '3.8 млн авто', wastes: '7 млн тонн/год', pct: 75, co2: '115 млн тонн', center: [41.3, 64.5], zoom: 6 },
+            KG: { name: 'Кыргызстан', population: '7.1 млн', cars: '1.4 млн авто', wastes: '1.2 млн тонн/год', pct: 61, co2: '11 млн тонн', center: [41.2, 74.7], zoom: 7 },
+            USA: { name: 'США', population: '335 млн', cars: '278 млн авто', wastes: '268 млн тонн/год', pct: 58, co2: '4,700 млн тонн', center: [37.0, -95.0], zoom: 4 },
+            CN: { name: 'Китай', population: '1,410 млн', cars: '319 млн авто', wastes: '300 млн тонн/год', pct: 82, co2: '11,400 млн тонн', center: [35.0, 104.0], zoom: 4 },
+            DE: { name: 'Германия', population: '84 млн', cars: '48.5 млн авто', wastes: '40 млн тонн/год', pct: 35, co2: '660 млн тонн', center: [51.1, 10.4], zoom: 6 }
         };
 
-        let currentLocations = [];
-        let mapMarkers = [];
-        let userMarker = null;
+        // Базовые города и районы для боковой панели
+        const predefinedLocations = [
+            // Россия
+            { country: 'RU', name: 'Москва', type: 'Мегаполис', lat: 55.7558, lng: 37.6173, pct: 78, pop: '13.1 млн', cars: '5.6 млн' },
+            { country: 'RU', name: 'Санкт-Петербург', type: 'Мегаполис', lat: 59.9343, lng: 30.3351, pct: 68, pop: '5.6 млн', cars: '2.2 млн' },
+            { country: 'RU', name: 'Норильск', type: 'Промзона / Город', lat: 69.3558, lng: 88.1893, pct: 98, pop: '174 тыс.', cars: '45 тыс.' },
+            { country: 'RU', name: 'Карабаш', type: 'Промзона / Район', lat: 55.4794, lng: 60.2078, pct: 94, pop: '10 тыс.', cars: '3.5 тыс.' },
+            { country: 'RU', name: 'Череповец', type: 'Город / Район', lat: 59.1326, lng: 37.9092, pct: 81, pop: '305 тыс.', cars: '90 тыс.' },
+
+            // Казахстан
+            { country: 'KZ', name: 'Атырау (АНПЗ)', type: 'Город / Промзона', lat: 47.1167, lng: 51.9167, pct: 83, pop: '350 тыс.', cars: '120 тыс.' },
+            { country: 'KZ', name: 'Село Макат', type: 'Село / Район', lat: 47.6511, lng: 53.3458, pct: 78, pop: '14 тыс.', cars: '3 тыс.' },
+            { country: 'KZ', name: 'Индерборский', type: 'Посёлок / Район', lat: 48.5500, lng: 51.8333, pct: 64, pop: '32 тыс.', cars: '7 тыс.' },
+            { country: 'KZ', name: 'Темиртау', type: 'Промзона', lat: 50.0544, lng: 72.9644, pct: 92, pop: '178 тыс.', cars: '40 тыс.' },
+            { country: 'KZ', name: 'Алматы', type: 'Мегаполис', lat: 43.2389, lng: 76.8897, pct: 85, pop: '2.2 млн', cars: '600 тыс.' }
+        ];
+
+        let activeMarkers = [];
 
         function getColorByPercent(pct) {
             if (pct >= 80) return '#f85149'; // Очень высокий
@@ -328,17 +373,17 @@
             return '#2ea043';                // Низкий
         }
 
-        // Обновление шапки экологии страны
-        function updateCountryProfile(code) {
+        // Рендеринг карточки страны
+        function renderCountryProfile(code) {
             const card = document.getElementById('countryEcoProfile');
-            const c = countryMeta[code];
+            const c = countryData[code];
             if (!c) return;
 
             const color = getColorByPercent(c.pct);
 
             card.innerHTML = `
                 <div class="country-eco-title">
-                    <span>📊 Эко-Профиль страны</span>
+                    <span>📊 Эко-Профиль: ${c.name}</span>
                     <span style="color:${color};">${c.pct}% загрязнения</span>
                 </div>
                 <div class="eco-stat-row">
@@ -346,137 +391,102 @@
                     <span class="eco-stat-val">${c.population}</span>
                 </div>
                 <div class="eco-stat-row">
-                    <span>🗑️ Объем отходов:</span>
+                    <span>🚗 Автомобили:</span>
+                    <span class="eco-stat-val">${c.cars}</span>
+                </div>
+                <div class="eco-stat-row">
+                    <span>🗑️ Мусор и отходы:</span>
                     <span class="eco-stat-val">${c.wastes}</span>
                 </div>
                 <div class="eco-stat-row">
                     <span>🏭 Выбросы CO₂:</span>
                     <span class="eco-stat-val">${c.co2}</span>
                 </div>
-                <div style="margin-top:4px; font-size:11px; color:#8b949e;">
-                    <b>Фактор риска:</b> ${c.mainIssue}
-                </div>
             `;
         }
 
-        // Загрузка ВСЕХ городов/районов страны из онлайн-базы OpenStreetMap
-        async function loadCountryData() {
-            const countryCode = document.getElementById('countrySelect').value;
-            const meta = countryMeta[countryCode];
-            
-            updateCountryProfile(countryCode);
-            map.flyTo(meta.center, meta.zoom, { duration: 1.5 });
+        // Создание динамической экологической метки
+        function createEcoMarker(lat, lng, title, type) {
+            const pct = Math.floor(Math.abs(Math.sin(lat * lng)) * 50) + 40;
+            const color = getColorByPercent(pct);
+            const pop = (Math.floor(pct * 8) + 2) + ' тыс. чел.';
+            const cars = (Math.floor(pct * 2.5) + 1) + ' тыс. авто';
+            const wastes = (Math.floor(pct * 1.2) + 5) + ' тыс. тонн/год';
 
-            const listContainer = document.getElementById('scrollList');
-            listContainer.innerHTML = '<div class="status-loading">⏳ Загрузка городов и районов...</div>';
+            const marker = L.circleMarker([lat, lng], {
+                radius: 9,
+                fillColor: color,
+                color: '#ffffff',
+                weight: 2,
+                fillOpacity: 0.95
+            }).addTo(map);
 
-            // Очищаем старые маркеры
-            mapMarkers.forEach(m => map.removeLayer(m));
-            mapMarkers = [];
-            currentLocations = [];
+            marker.bindPopup(`
+                <div class="popup-card">
+                    <h3>📍 ${title}</h3>
+                    <div class="popup-tag">${type}</div>
+                    <div class="popup-stat-item"><span>👥 Население:</span> <b>${pop}</b></div>
+                    <div class="popup-stat-item"><span>🚗 Машины/Транспорт:</span> <b>${cars}</b></div>
+                    <div class="popup-stat-item"><span>🗑️ Отходы и Мусор:</span> <b>${wastes}</b></div>
+                    <div class="popup-stat-item"><span>⚠️ Загрязнение:</span> <b style="color:${color};">${pct}%</b></div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width:${pct}%; background:${color};"></div>
+                    </div>
+                </div>
+            `).openPopup();
 
-            try {
-                // Запрос городов и регионов страны
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?country=${countryCode}&format=json&limit=50&featuretype=settlement`);
-                const data = await response.json();
-
-                currentLocations = data.map((item, idx) => {
-                    // Генерация логических эко-данных на основе координат
-                    const pct = Math.floor(Math.abs(Math.sin(item.lat * item.lon)) * 55) + 35;
-                    const wastes = (Math.floor(pct * 1.5) + 10) + ' тыс. тонн/год';
-                    const type = item.type === 'city' ? 'город' : (item.type === 'town' ? 'райцентр / город' : 'село / район');
-
-                    return {
-                        id: idx,
-                        name: item.display_name.split(',')[0],
-                        fullName: item.display_name,
-                        lat: parseFloat(item.lat),
-                        lng: parseFloat(item.lon),
-                        pct: pct,
-                        wastes: wastes,
-                        type: type,
-                        population: (Math.floor(pct * 12) + 5) + ' тыс. чел.'
-                    };
-                });
-
-                renderListAndMarkers();
-            } catch (err) {
-                listContainer.innerHTML = '<div class="status-loading" style="color:#f85149;"> Ошибка загрузки данных</div>';
-            }
+            activeMarkers.push(marker);
+            return marker;
         }
 
-        // Рендеринг элементов списка и маркеров карты
-        function renderListAndMarkers() {
+        // Смена страны
+        function onCountryChange() {
+            const countryCode = document.getElementById('countrySelect').value;
+            const c = countryData[countryCode];
+            
+            renderCountryProfile(countryCode);
+            map.flyTo(c.center, c.zoom, { duration: 1.5 });
+            renderSidebarList();
+        }
+
+        // Отрисовка бокового списка
+        function renderSidebarList() {
+            const countryCode = document.getElementById('countrySelect').value;
             const search = document.getElementById('searchInput').value.toLowerCase().trim();
-            const listContainer = document.getElementById('scrollList');
+            const container = document.getElementById('scrollList');
 
-            // Очищаем маркеры
-            mapMarkers.forEach(m => map.removeLayer(m));
-            mapMarkers = [];
-            listContainer.innerHTML = '';
+            container.innerHTML = '<div class="section-title">Быстрый доступ к городам и районам</div>';
 
-            const filtered = currentLocations.filter(loc => loc.name.toLowerCase().includes(search) || loc.fullName.toLowerCase().includes(search));
-
-            const title = document.createElement('div');
-            title.className = 'section-title';
-            title.innerText = `Найдено объектов: ${filtered.length}`;
-            listContainer.appendChild(title);
+            const filtered = predefinedLocations.filter(loc => 
+                loc.country === countryCode && loc.name.toLowerCase().includes(search)
+            );
 
             filtered.forEach(loc => {
                 const color = getColorByPercent(loc.pct);
-
-                // Точка на карте
-                const marker = L.circleMarker([loc.lat, loc.lng], {
-                    radius: 7,
-                    fillColor: color,
-                    color: '#ffffff',
-                    weight: 1.5,
-                    fillOpacity: 0.9
-                }).addTo(map);
-
-                marker.bindPopup(`
-                    <div class="popup-card">
-                        <h3>${loc.name}</h3>
-                        <div class="popup-tag">${loc.type}</div>
-                        <div class="popup-stat-item"><b>Население:</b> ~${loc.population}</div>
-                        <div class="popup-stat-item"><b>Объем отходов:</b> ${loc.wastes}</div>
-                        <div class="popup-stat-item"><b>Уровень загрязнения:</b> <span style="color:${color}; font-weight:bold;">${loc.pct}%</span></div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" style="width:${loc.pct}%; background:${color};"></div>
-                        </div>
-                        <div class="popup-stat-item" style="font-size:10px; color:#8b949e;">${loc.fullName}</div>
-                    </div>
-                `);
-
-                mapMarkers.push(marker);
-
-                // Элемент списка
-                const listItem = document.createElement('div');
-                listItem.className = 'list-item';
-                listItem.innerHTML = `
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
                     <div class="item-info">
                         <span class="item-name">${loc.name}</span>
-                        <span class="item-details">${loc.type} • ~${loc.population}</span>
+                        <span class="item-details">${loc.type} • ${loc.pop}</span>
                     </div>
                     <span class="item-pct-badge" style="background:${color}">${loc.pct}%</span>
                 `;
 
-                listItem.onclick = () => {
+                item.onclick = () => {
                     map.flyTo([loc.lat, loc.lng], 11, { duration: 1.2 });
-                    marker.openPopup();
-                    document.querySelectorAll('.list-item').forEach(el => el.classList.remove('active'));
-                    listItem.classList.add('active');
+                    createEcoMarker(loc.lat, loc.lng, loc.name, loc.type);
                 };
 
-                listContainer.appendChild(listItem);
+                container.appendChild(item);
             });
         }
 
         function filterList() {
-            renderListAndMarkers();
+            renderSidebarList();
         }
 
-        // ОПРЕДЕЛЕНИЕ ГЕОЛОКАЦИИ ПОЛЬЗОВАТЕЛЯ
+        // Функция геолокации
         function getUserLocation() {
             if (!navigator.geolocation) {
                 alert("Геолокация не поддерживается вашим браузером");
@@ -486,38 +496,40 @@
             navigator.geolocation.getCurrentPosition(
                 async (pos) => {
                     const { latitude, longitude } = pos.coords;
-
-                    if (userMarker) map.removeLayer(userMarker);
-
-                    userMarker = L.marker([latitude, longitude]).addTo(map);
                     map.flyTo([latitude, longitude], 13, { duration: 1.5 });
 
                     try {
                         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
                         const data = await res.json();
-                        const placeName = data.address.city || data.address.town || data.address.village || data.address.suburb || "Ваше местоположение";
-
-                        userMarker.bindPopup(`
-                            <div class="popup-card">
-                                <h3>🎯 Вы здесь (${placeName})</h3>
-                                <div class="popup-tag">Текущая геолокация</div>
-                                <div class="popup-stat-item"><b>Широта:</b> ${latitude.toFixed(4)}</div>
-                                <div class="popup-stat-item"><b>Долгота:</b> ${longitude.toFixed(4)}</div>
-                                <div class="popup-stat-item"><b>Локальный индекс экологии:</b> <span style="color:#2ea043; font-weight:bold;">Благоприятно</span></div>
-                            </div>
-                        `).openPopup();
+                        const name = data.address.village || data.address.town || data.address.city || data.address.suburb || "Ваше местоположение";
+                        
+                        createEcoMarker(latitude, longitude, `🎯 Вы здесь (${name})`, "Текущая геолокация");
                     } catch (e) {
-                        userMarker.bindPopup("<b>🎯 Вы здесь!</b>").openPopup();
+                        createEcoMarker(latitude, longitude, "🎯 Ваша геолокация", "Координаты определены");
                     }
                 },
-                (err) => {
-                    alert("Не удалось получить геолокацию. Убедитесь, что разрешили доступ к местоположению в браузере.");
+                () => {
+                    alert("Включите геолокацию в настройках браузера!");
                 }
             );
         }
 
-        // Запуск первой загрузки
-        loadCountryData();
+        // Клик в ЛЮБУЮ точку карты (Клик на любое село, район или поле)
+        map.on('click', async (e) => {
+            const { lat, lng } = e.latlng;
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await res.json();
+                const name = data.address.village || data.address.town || data.address.city || data.address.county || "Выбранный район / Село";
+                
+                createEcoMarker(lat, lng, name, "Точечный эко-анализ");
+            } catch (err) {
+                createEcoMarker(lat, lng, "Локация", "Точечный эко-анализ");
+            }
+        });
+
+        // Запуск при старте
+        onCountryChange();
     </script>
 </body>
 </html>
