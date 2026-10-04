@@ -6,22 +6,99 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui;background:#090c10;color:#c9d1d9}
 #app{display:flex;width:100vw;height:100vh}
 .sidebar{width:390px;height:100%;background:#0d1117;border-right:1px solid #30363d;display:flex;flex-direction:column;z-index:1000}
-.header{padding:12px;background:#161b22;border-bottom:1px solid #30363d}
-.header h2{font-size:14px;color:#58a6ff;display:flex;justify-content:space-between;margin-bottom:8px}
-.btn{border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;color:#fff}
+.header{padding:10px;background:#161b22;border-bottom:1px solid #30363d}
+.header h2{font-size:13px;color:#58a6ff;display:flex;justify-content:space-between;margin-bottom:6px}
+.btn{border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;color:#fff}
 .btn-geo{background:#238636}.btn-search{background:#1f6feb}
-.select,.input{width:100%;background:#0d1117;border:1px solid #30363d;color:#fff;padding:8px 10px;border-radius:6px;font-size:13px;outline:none;margin-bottom:8px}
+
+.custom-select-wrapper {
+    position: relative;
+    user-select: none;
+    margin-bottom: 6px;
+}
+.custom-select {
+    width: 100%;
+    background: #21262d;
+    border: 1px solid #58a6ff;
+    color: #ffffff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.custom-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    margin-top: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.custom-dropdown.open {
+    display: block;
+}
+.custom-option {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #c9d1d9;
+    cursor: pointer;
+}
+.custom-option:hover {
+    background: #21262d;
+    color: #ffffff;
+}
+
+.input{width:100%;background:#0d1117;border:1px solid #30363d;color:#fff;padding:7px 9px;border-radius:6px;font-size:12px;outline:none;margin-bottom:6px}
 .search{display:flex;gap:6px}
-.list{flex:1;overflow-y:auto;padding:8px}
-.item{padding:9px;background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:6px;cursor:pointer}
+.list{flex:1;overflow-y:auto;padding:6px;max-height:220px;}
+.item{padding:8px;background:#161b22;border:1px solid #30363d;border-radius:6px;margin-bottom:5px;cursor:pointer}
 .item:hover{border-color:#58a6ff}
 #map{flex:1}
-.loader{text-align:center;color:#8b949e;margin-top:20px;font-size:12px}
+.loader{text-align:center;color:#8b949e;margin-top:10px;font-size:11px}
+
+.ai-box {
+    margin: 8px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-left: 3px solid #58a6ff;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #e2e8f0;
+}
+.ai-title {
+    color: #58a6ff;
+    font-weight: bold;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.ai-content {
+    max-height: 130px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 6px;
+}
 </style>
 </head>
 <body>
@@ -29,155 +106,296 @@
 <div class="sidebar">
 <div class="header">
 <h2><span>🌍 ЭкоМониторинг 195 стран</span><button class="btn btn-geo" onclick="getUserLocation()">🎯 Моя гео</button></h2>
-<select id="countrySelect" class="select"></select>
-<div class="search"><input id="searchInput" class="input" placeholder="Город, район, село..."><button class="btn btn-search" onclick="searchLocation()">Найти</button></div>
 
-<!-- === ИИ-АССИСТЕНТ (В СТИЛЕ ПОИСКА) === -->
-<div id="aiSearchStyleWidget" style="margin-top: 4px; margin-bottom: 8px; width: 100%; display: flex; flex-direction: column; gap: 6px;">
-    <div id="aiStyleMessages" style="display: none; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px; max-height: 150px; overflow-y: auto; font-size: 12px; color: #c9d1d9; line-height: 1.4; flex-direction: column; gap: 6px;"></div>
-    <div style="display: flex; width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; box-sizing: border-box;">
-        <input type="text" id="aiStyleInput" placeholder="Спросить ИИ про объект..." style="flex: 1; background: transparent; border: none; padding: 8px 10px; color: #fff; font-size: 13px; outline: none;" onkeypress="if(event.key==='Enter') sendStyleAiPrompt()">
-        <button onclick="sendStyleAiPrompt()" style="background: #238636; color: #fff; border: none; padding: 0 14px; cursor: pointer; font-size: 12px; font-weight: 600;">ИИ</button>
+<div class="custom-select-wrapper" id="customSelectWrapper">
+    <div class="custom-select" id="customSelectTrigger">🇰🇿 Казахстан <span style="font-size:10px">▼</span></div>
+    <div class="custom-dropdown" id="customDropdown"></div>
+</div>
+<input type="hidden" id="countrySelect" value="KZ">
+
+<div class="search"><input id="searchInput" class="input" placeholder="Город, район, село..."><button class="btn btn-search" onclick="searchLocation()">Найти</button></div>
+<div style="font-size:10px;color:#8b949e">Всего в базе: <b id="count">195</b> стран</div>
+</div>
+
+<div id="resultsList" class="list">
+    <div class="loader">Загрузка...</div>
+</div>
+
+<div class="ai-box">
+    <div class="ai-title">
+        <span>🤖 ИИ-Справочник и Чат</span>
+    </div>
+    <div id="aiTextContent" class="ai-content">
+        Кликните на локацию или напишите свой вопрос ниже...
+    </div>
+    <div style="display: flex; gap: 4px;">
+        <input id="aiUserInput" class="input" placeholder="Задайте свой вопрос ИИ..." style="margin-bottom: 0; font-size: 11px; padding: 5px;" />
+        <button class="btn btn-search" onclick="askCustomAI()" style="padding: 5px 8px; font-size: 11px;">Спросить</button>
     </div>
 </div>
-<!-- ======================================= -->
 
-<div style="font-size:10px;color:#8b949e;margin-top:4px">Всего в базе: <b id="count">195</b> стран, города и села грузятся по выбору</div>
-</div>
-<div id="resultsList" class="list"><div class="loader">Загрузка...</div></div>
 </div>
 <div id="map"></div>
 </div>
-<script src="JavaScript.js"></script>
-</body>
-</html>
-// === ОСНОВНАЯ ЛОГИКА КАРТЫ И МАРКЕРОВ ===
-let map, markersCluster;
 
-document.addEventListener("DOMContentLoaded", () => {
-    // Инициализация карты Leaflet
-    if (document.getElementById('map')) {
-        map = L.map('map').setView([48.0, 68.0], 4);
-        
-        // Темный слой карты
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            subdomains: 'abcd',
-            maxZoom: 19
-        }).addTo(map);
+<script>
+const map=L.map('map',{zoomControl:true,inertia:true}).setView([48,67],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
+const cluster=L.markerClusterGroup(); map.addLayer(cluster);
 
-        markersCluster = L.markerClusterGroup();
-        map.addLayer(markersCluster);
-    }
-
-    // Загрузка данных
-    loadCountriesData();
-});
-
-function loadCountriesData() {
-    const select = document.getElementById('countrySelect');
-    const resultsList = document.getElementById('resultsList');
-    
-    if (select) {
-        const countries = [
-            { name: "Казахстан", lat: 48.0196, lon: 66.9237 },
-            { name: "Россия", lat: 61.5240, lon: 105.3188 },
-            { name: "Узбекистан", lat: 41.3775, lon: 64.5853 }
-        ];
-
-        select.innerHTML = '<option value="">Выберите страну...</option>';
-        countries.forEach(c => {
-            let opt = document.createElement('option');
-            opt.value = `${c.lat},${c.lon}`;
-            opt.textContent = c.name;
-            select.appendChild(opt);
-        });
-
-        select.addEventListener('change', (e) => {
-            if (!e.target.value || !map) return;
-            const [lat, lon] = e.target.value.split(',').map(Number);
-            map.setView([lat, lon], 6);
-        });
-    }
-
-    if (resultsList) {
-        resultsList.innerHTML = `
-            <div class="item" onclick="if(map) map.setView([47.1000, 51.9167], 10)">
-                <b>📍 Город Атырау</b><br><small>Запад Казахстана, р. Урал</small>
-            </div>
-            <div class="item" onclick="if(map) map.setView([55.7558, 37.6173], 10)">
-                <b>📍 Москва</b><br><small>Столица России</small>
-            </div>
-        `;
-    }
-}
-
-function searchLocation() {
-    const input = document.getElementById('searchInput');
-    if (!input || !input.value.trim()) return;
-    alert(`Поиск объекта: ${input.value}`);
-}
-
-function getUserLocation() {
-    if (navigator.geolocation && map) {
-        navigator.geolocation.getCurrentPosition(position => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            map.setView([lat, lon], 12);
-            L.marker([lat, lon]).addTo(markersCluster).bindPopup("Вы здесь").openPopup();
-        }, () => {
-            alert("Не удалось определить геолокацию.");
-        });
-    }
-}
-
-
-// === ЛОГИКА ГЕО-ИИ АССИСТЕНТА (ДЛЯ ВАШЕГО ИНПУТА В HTML) ===
-
-const sidebarGeoKeywords = [
-    "где", "город", "село", "деревня", "район", "область", "страна", "регион", 
-    "север", "юг", "запад", "восток", "центр", "координаты", "находится", "климат", 
-    "москва", "атырау", "астана", "алматы", "россия", "казахстан", "узбекистан", 
-    "какой", "какая", "какое", "часть", "округ", "карта", "экология", "расстояние", "поселок", "канал"
+const allCountries=[
+{code:"AF",name:"🇦🇫 Афганистан",center:[33,65],zoom:6},{code:"AL",name:"🇦🇱 Албания",center:[41,20],zoom:7},{code:"DZ",name:"🇩🇿 Алжир",center:[28,3],zoom:5},
+{code:"AD",name:"🇦🇩 Андорра",center:[42.5,1.5],zoom:9},{code:"AO",name:"🇦🇴 Ангола",center:[-11,17],zoom:5},{code:"AG",name:"🇦🇬 Антигуа и Барбуда",center:[17, -61.8],zoom:8},
+{code:"AR",name:"🇦🇷 Аргентина",center:[-38,-63],zoom:4},{code:"AM",name:"🇦🇲 Армения",center:[40,45],zoom:7},{code:"AU",name:"🇦🇺 Австралия",center:[-25,133],zoom:4},
+{code:"AT",name:"🇦🇹 Австрия",center:[47.3,14.5],zoom:6},{code:"AZ",name:"🇦🇿 Азербайджан",center:[40,47],zoom:7},{code:"BS",name:"🇧🇸 Багамы",center:[24,-76],zoom:6},
+{code:"BH",name:"🇧🇭 Бахрейн",center:[26,50.5],zoom:8},{code:"BD",name:"🇧🇩 Бангладеш",center:[23.7,90],zoom:6},{code:"BB",name:"🇧🇧 Барбадос",center:[13.1,-59.5],zoom:9},
+{code:"BY",name:"🇧🇾 Беларусь",center:[53.7,27.9],zoom:6},{code:"BE",name:"🇧🇪 Бельгия",center:[50.8,4.3],zoom:7},{code:"BZ",name:"🇧🇿 Белиз",center:[17, -88],zoom:7},
+{code:"BJ",name:"🇧🇯 Бенин",center:[9.3,2.3],zoom:6},{code:"BT",name:"🇧🇹 Бутан",center:[27.5,90.4],zoom:7},{code:"BO",name:"🇧🇴 Боливия",center:[-16.2,-63.5],zoom:5},
+{code:"BA",name:"🇧🇦 Босния",center:[43.9,17.6],zoom:7},{code:"BW",name:"🇧🇼 Ботсвана",center:[-22,24],zoom:6},{code:"BR",name:"🇧🇷 Бразилия",center:[-14,-51],zoom:4},
+{code:"BN",name:"🇧🇳 Бруней",center:[4.5,114.7],zoom:8},{code:"BG",name:"🇧🇬 Болгария",center:[42.7,25.4],zoom:6},{code:"BF",name:"🇧🇫 Буркина-Фасо",center:[12.2,-1.5],zoom:6},
+{code:"BI",name:"🇧🇮 Бурунди",center:[-3.3,29.9],zoom:7},{code:"KH",name:"🇰🇭 Камбоджа",center:[12.5,104.9],zoom:6},{code:"CM",name:"🇨🇲 Камерун",center:[7.3,12.3],zoom:6},
+{code:"CA",name:"🇨🇦 Канада",center:[56,-106],zoom:3},{code:"CV",name:"🇨🇻 Кабо-Верде",center:[16,-24],zoom:7},{code:"CF",name:"🇨🇫 ЦАР",center:[6.6,20.5],zoom:6},
+{code:"TD",name:"🇹🇩 Чад",center:[15,19],zoom:5},{code:"CL",name:"🇨🇱 Чили",center:[-35,-71],zoom:4},{code:"CN",name:"🇨🇳 Китай",center:[35,104],zoom:4},
+{code:"CO",name:"🇨🇴 Колумбия",center:[4,-72],zoom:5},{code:"KM",name:"🇰🇲 Коморы",center:[-11.8,43.2],zoom:8},{code:"CG",name:"🇨🇬 Конго",center:[-0.2,15.8],zoom:6},
+{code:"CR",name:"🇨🇷 Коста-Рика",center:[9.7,-83.7],zoom:7},{code:"HR",name:"🇭🇷 Хорватия",center:[45,15.5],zoom:7},{code:"CU",name:"🇨🇺 Куба",center:[21.5,-77.7],zoom:6},
+{code:"CY",name:"🇨🇾 Кипр",center:[35,33],zoom:8},{code:"CZ",name:"🇨🇿 Чехия",center:[49.8,15.4],zoom:7},{code:"DK",name:"🇩🇰 Дания",center:[56,10],zoom:6},
+{code:"DJ",name:"🇩🇯 Джибути",center:[11.8,42.5],zoom:7},{code:"DM",name:"🇩🇲 Доминика",center:[15.4,-61.3],zoom:9},{code:"DO",name:"🇩🇴 Доминикана",center:[18.7,-70.1],zoom:7},
+{code:"EC",name:"🇪🇨 Эквадор",center:[-1.8,-78],zoom:6},{code:"EG",name:"🇪🇬 Египет",center:[26.8,30.8],zoom:5},{code:"SV",name:"🇸🇻 Сальвадор",center:[13.7,-88.9],zoom:7},
+{code:"GQ",name:"🇬🇶 Экваториальная Гвинея",center:[1.6,10.2],zoom:6},{code:"ER",name:"🇪🇷 Эритрея",center:[15.1,39.7],zoom:6},{code:"EE",name:"🇪🇪 Эстония",center:[58.5,25],zoom:6},
+{code:"SZ",name:"🇸🇿 Эсватини",center:[-26.5,31.5],zoom:7},{code:"ET",name:"🇪🇹 Эфиопия",center:[9.1,40.4],zoom:5},{code:"FJ",name:"🇫🇯 Фиджи",center:[-17.7,178],zoom:6},
+{code:"FI",name:"🇫🇮 Финляндия",center:[61.9,25.7],zoom:5},{code:"FR",name:"🇫🇷 Франция",center:[46.2,2.2],zoom:5},{code:"GA",name:"🇬🇦 Габон",center:[-0.8,11.6],zoom:6},
+{code:"GM",name:"🇬🇲 Гамбия",center:[13.4,-15.3],zoom:7},{code:"GE",name:"🇬🇪 Грузия",center:[42.3,43.3],zoom:7},{code:"DE",name:"🇩🇪 Германия",center:[51.1,10.4],zoom:6},
+{code:"GH",name:"🇬🇭 Гана",center:[7.9,-1],zoom:6},{code:"GR",name:"🇬🇷 Греция",center:[39,22],zoom:6},{code:"GD",name:"🇬🇩 Гренада",center:[12.1,-61.6],zoom:9},
+{code:"GT",name:"🇬🇹 Гватемала",center:[15.7,-90.2],zoom:6},{code:"GN",name:"🇬🇳 Гвинея",center:[9.9,-9.6],zoom:6},{code:"GW",name:"🇬🇼 Гвинея-Бисау",center:[11.8,-15.1],zoom:7},
+{code:"GY",name:"🇬🇾 Гайана",center:[4.8,-58.9],zoom:6},{code:"HT",name:"🇭🇹 Гаити",center:[18.9,-72.3],zoom:7},{code:"HN",name:"🇭🇳 Гондурас",center:[15,-86.2],zoom:6},
+{code:"HU",name:"🇭🇺 Венгрия",center:[47.1,19.5],zoom:7},{code:"IS",name:"🇮🇸 Исландия",center:[64.9,-19],zoom:5},{code:"IN",name:"🇮🇳 Индия",center:[20.5,78.9],zoom:4},
+{code:"ID",name:"🇮🇩 Индонезия",center:[-0.7,113],zoom:4},{code:"IR",name:"🇮🇷 Иран",center:[32,53],zoom:5},{code:"IQ",name:"🇮🇶 Ирак",center:[33,44],zoom:6},
+{code:"IE",name:"🇮🇪 Ирландия",center:[53.4,-8],zoom:6},{code:"IL",name:"🇮🇱 Израиль",center:[31,35],zoom:7},{code:"IT",name:"🇮🇹 Италия",center:[41.8,12.5],zoom:5},
+{code:"JM",name:"🇯🇲 Ямайка",center:[18.1,-77.2],zoom:7},{code:"JP",name:"🇯🇵 Япония",center:[36.2,138],zoom:5},{code:"JO",name:"🇯🇴 Иордания",center:[30.5,36.2],zoom:7},
+{code:"KZ",name:"🇰🇿 Казахстан",center:[48,67],zoom:5},{code:"KE",name:"🇰🇪 Кения",center:[-0.02,37.9],zoom:6},{code:"KI",name:"🇰🇮 Кирибати",center:[-3.3,-168],zoom:5},
+{code:"KP",name:"🇰🇷 КНДР",center:[40,127],zoom:6},{code:"KR",name:"🇰🇷 Южная Корея",center:[35.9,127.7],zoom:6},{code:"XK",name:"🇽🇰 Косово",center:[42.6,20.9],zoom:8},
+{code:"KW",name:"🇰🇼 Кувейт",center:[29.3,47.4],zoom:7},{code:"KG",name:"🇰🇬 Кыргызстан",center:[41.2,74.7],zoom:6},{code:"LA",name:"🇱🇦 Лаос",center:[19.8,102.4],zoom:6},
+{code:"LV",name:"🇱🇻 Латвия",center:[56.8,24.6],zoom:6},{code:"LB",name:"🇱🇧 Ливан",center:[33.8,35.8],zoom:8},{code:"LS",name:"🇱🇸 Лесото",center:[-29.6,28.2],zoom:7},
+{code:"LR",name:"🇱🇷 Либерия",center:[6.4,-9.4],zoom:6},{code:"LY",name:"🇱🇾 Ливия",center:[26.3,17.2],zoom:5},{code:"LI",name:"🇱🇮 Лихтенштейн",center:[47.1,9.5],zoom:9},
+{code:"LT",name:"🇱🇹 Литва",center:[55.1,23.8],zoom:6},{code:"LU",name:"🇱🇺 Люксембург",center:[49.8,6.1],zoom:8},{code:"MG",name:"🇲🇬 Мадагаскар",center:[-18.7,47.5],zoom:5},
+{code:"MW",name:"🇲🇼 Малави",center:[-13.2,34],zoom:6},{code:"MY",name:"🇲🇾 Малайзия",center:[4.2,101.9],zoom:5},{code:"MV",name:"🇲🇻 Мальдивы",center:[3.2,73.2],zoom:7},
+{code:"ML",name:"🇲🇱 Мали",center:[17.5,-4],zoom:5},{code:"MT",name:"🇲🇹 Мальта",center:[35.9,14.3],zoom:8},{code:"MH",name:"🇲🇭 Маршалловы Острова",center:[7.1,171.3],zoom:6},
+{code:"MR",name:"🇲🇷 Мавритания",center:[21,-10.9],zoom:5},{code:"MU",name:"🇲🇺 Маврикий",center:[-20.3,57.5],zoom:8},{code:"MX",name:"🇲🇽 Мексика",center:[23.6,-102.5],zoom:4},
+{code:"FM",name:"🇫🇲 Микронезия",center:[7.4,150.5],zoom:6},{code:"MD",name:"🇲🇩 Молдова",center:[47.4,28.3],zoom:7},{code:"MC",name:"🇲🇨 Монако",center:[43.7,7.4],zoom:10},
+{code:"MN",name:"🇲🇳 Монголия",center:[46.8,103.8],zoom:5},{code:"ME",name:"🇲🇪 Черногория",center:[42.7,19.3],zoom:7},{code:"MA",name:"🇲🇦 Марокко",center:[31.7,-7],zoom:5},
+{code:"MZ",name:"🇲🇿 Мозамбик",center:[-18.6,35.5],zoom:5},{code:"MM",name:"🇲🇲 Мьянма",center:[21.9,95.9],zoom:5},{code:"NA",name:"🇳🇦 Намибия",center:[-22.9,18.4],zoom:5},
+{code:"NR",name:"🇳🇷 Науру",center:[-0.5,166.9],zoom:9},{code:"NP",name:"🇳🇵 Непал",center:[28.3,84.1],zoom:6},{code:"NL",name:"🇳🇱 Нидерланды",center:[52.1,5.2],zoom:7},
+{code:"NZ",name:"🇳🇿 Новая Зеландия",center:[-40.9,174.8],zoom:4},{code:"NI",name:"🇳🇮 Никарагуа",center:[12.8,-85.2],zoom:6},{code:"NE",name:"🇳🇪 Нигер",center:[17.6,8],zoom:5},
+{code:"NG",name:"🇳🇬 Нигерия",center:[9,8.6],zoom:5},{code:"MK",name:"🇲🇰 Сев. Македония",center:[41.6,21.7],zoom:7},{code:"NO",name:"🇳🇴 Норвегия",center:[60.4,8.4],zoom:4},
+{code:"OM",name:"🇴🇲 Оман",center:[21.5,55.9],zoom:6},{code:"PK",name:"🇵🇰 Пакистан",center:[30.3,69.3],zoom:5},{code:"PW",name:"🇵🇼 Палау",center:[7.5,134.5],zoom:7},
+{code:"PS",name:"🇵🇸 Палестина",center:[31.9,35.2],zoom:8},{code:"PA",name:"🇵🇦 Панама",center:[8.5,-80.7],zoom:6},{code:"PG",name:"🇵🇬 Папуа-Новая Гвинея",center:[-6.3,143.9],zoom:5},
+{code:"PY",name:"🇵🇾 Парагвай",center:[-23.4,-58.4],zoom:5},{code:"PE",name:"🇵🇪 Перу",center:[-9.1,-75],zoom:5},{code:"PH",name:"🇵🇭 Филиппины",center:[12.8,122.7],zoom:5},
+{code:"PL",name:"🇵🇱 Польша",center:[51.9,19.1],zoom:6},{code:"PT",name:"🇵🇹 Португалия",center:[39.3,-8.2],zoom:6},{code:"QA",name:"🇶🇦 Катар",center:[25.3,51.1],zoom:8},
+{code:"RO",name:"🇷🇴 Румыния",center:[45.9,24.9],zoom:6},{code:"RU",name:"🇷🇺 Россия",center:[61,105],zoom:3},{code:"RW",name:"🇷🇼 Руанда",center:[-1.9,30],zoom:7},
+{code:"KN",name:"🇰🇳 Сент-Китс и Невис",center:[17.3,-62.7],zoom:8},{code:"LC",name:"🇱🇨 Сент-Люсия",center:[13.9,-60.9],zoom:9},{code:"VC",name:"🇻🇨 Сент-Винсент",center:[12.9,-61.2],zoom:9},
+{code:"WS",name:"🇼🇸 Самоа",center:[-13.7,-172.1],zoom:7},{code:"SM",name:"🇸🇲 Сан-Марино",center:[43.9,12.4],zoom:9},{code:"ST",name:"🇸🇹 Сан-Томе",center:[0.1,6.6],zoom:7},
+{code:"SA",name:"🇸🇦 Саудовская Аравия",center:[23.8,45],zoom:5},{code:"SN",name:"🇸🇳 Сенегал",center:[14.4,-14.4],zoom:6},{code:"RS",name:"🇷🇸 Сербия",center:[44,21],zoom:6},
+{code:"SC",name:"🇸🇨 Сейшелы",center:[-4.6,55.4],zoom:8},{code:"SL",name:"🇸🇱 Сьерра-Леоне",center:[8.4,-11.8],zoom:7},{code:"SG",name:"🇸🇬 Сингапур",center:[1.3,103.8],zoom:10},
+{code:"SK",name:"🇸🇰 Словакия",center:[48.6,19.6],zoom:7},{code:"SI",name:"🇸🇮 Словения",center:[46.1,14.9],zoom:7},{code:"SB",name:"🇸🇧 Соломоны",center:[-9.6,160],zoom:5},
+{code:"SO",name:"🇸🇴 Сомали",center:[5.1,46.1],zoom:5},{code:"ZA",name:"🇿🇦 ЮАР",center:[-30,22],zoom:5},{code:"SS",name:"🇸🇸 Южный Судан",center:[6.8,31.3],zoom:6},
+{code:"ES",name:"🇪🇸 Испания",center:[40.4,-3.7],zoom:5},{code:"LK",name:"🇱🇰 Шри-Ланка",center:[7.8,80.7],zoom:7},{code:"SD",name:"🇸🇩 Судан",center:[12.8,30.2],zoom:5},
+{code:"SR",name:"🇸🇷 Суринам",center:[3.9,-56],zoom:6},{code:"SE",name:"🇸🇪 Швеция",center:[60.1,18.6],zoom:4},{code:"CH",name:"🇨🇭 Швейцария",center:[46.8,8.2],zoom:7},
+{code:"SY",name:"🇸🇾 Сирия",center:[34.8,38.9],zoom:6},{code:"TJ",name:"🇹🇯 Таджикистан",center:[38.8,71.2],zoom:6},{code:"TZ",name:"🇹🇿 Танзания",center:[-6.3,34.8],zoom:5},
+{code:"TH",name:"🇹🇭 Таиланд",center:[15.8,100.9],zoom:5},{code:"TL",name:"🇹🇱 Тимор",center:[-8.8,125.7],zoom:7},{code:"TG",name:"🇹🇬 Того",center:[8.6,0.8],zoom:6},
+{code:"TO",name:"🇹🇴 Тонга",center:[-21.1,-175.2],zoom:6},{code:"TT",name:"🇹🇹 Тринидад и Тобаго",center:[10.6,-61.2],zoom:7},{code:"TN",name:"🇹🇳 Тунис",center:[33.8,9.5],zoom:6},
+{code:"TR",name:"🇹🇷 Турция",center:[38.9,35.2],zoom:5},{code:"TM",name:"🇹🇲 Туркменистан",center:[38.9,59.5],zoom:5},{code:"TV",name:"🇹🇻 Тувалу",center:[-7.1,177.6],zoom:8},
+{code:"UG",name:"🇺🇬 Уганда",center:[1.3,32.2],zoom:6},{code:"UA",name:"🇺🇦 Украина",center:[48.3,31.1],zoom:5},{code:"AE",name:"🇦🇪 ОАЭ",center:[23.4,53.8],zoom:6},
+{code:"GB",name:"🇬🇧 Великобритания",center:[55.3,-3.4],zoom:5},{code:"US",name:"🇺🇸 США",center:[37,-95],zoom:4},{code:"UY",name:"🇺🇾 Уругвай",center:[-32.5,-55.8],zoom:6},
+{code:"UZ",name:"🇺🇿 Узбекистан",center:[41.3,64.5],zoom:5},{code:"VU",name:"🇻🇺 Вануату",center:[-15.3,166.9],zoom:6},{code:"VA",name:"🇻🇦 Ватикан",center:[41.9,12.4],zoom:15},
+{code:"VE",name:"🇻🇪 Венесуэла",center:[6.4,-66.5],zoom:5},{code:"VN",name:"🇻🇳 Вьетнам",center:[14,108],zoom:5},{code:"YE",name:"🇾🇪 Йемен",center:[15.5,47.7],zoom:5},
+{code:"ZM",name:"🇿🇲 Замбия",center:[-13.1,27.8],zoom:5},{code:"ZW",name:"🇿🇼 Зимбабве",center:[-19,29.1],zoom:5}
 ];
 
-function sendStyleAiPrompt() {
-    const inputField = document.getElementById('aiStyleInput');
-    const chatContainer = document.getElementById('aiStyleMessages');
+function init(){
+  const trigger=document.getElementById('customSelectTrigger');
+  const dropdown=document.getElementById('customDropdown');
+  const hiddenInput=document.getElementById('countrySelect');
+  
+  dropdown.innerHTML='';
+  allCountries.forEach(c=>{
+    const opt=document.createElement('div');
+    opt.className='custom-option';
+    opt.textContent=c.name;
+    opt.onclick=()=>{
+      hiddenInput.value=c.code;
+      trigger.innerHTML=`${c.name} <span style="font-size:10px">▼</span>`;
+      dropdown.classList.remove('open');
+      loadCountryData();
+    };
+    dropdown.appendChild(opt);
+  });
+
+  trigger.onclick=(e)=>{
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  };
+
+  document.addEventListener('click', ()=>{
+    dropdown.classList.remove('open');
+  });
+
+  document.getElementById('count').textContent=allCountries.length;
+  loadCountryData();
+}
+
+function getColor(p){ return p>=80?'#f85149':p>=60?'#e67e22':p>=40?'#f1c40f':'#2ea043'; }
+function hashEco(lat,lng){ const h=Math.abs(Math.sin(lat*999+lng*777)*10000)%100; return Math.floor(30+h%60); }
+
+let cache=JSON.parse(localStorage.getItem('eco_cache')||'{}');
+function saveCache(){ localStorage.setItem('eco_cache', JSON.stringify(cache)); }
+
+async function getAIEcoReport(locationName) {
+    const aiText = document.getElementById('aiTextContent');
+    if (!aiText) return;
+
+    aiText.innerHTML = `⏳ Сбор данных для: <b>${locationName}</b>...`;
+
+    const promptText = `Дай краткую историческую и экологическую справку на 2026 год для: "${locationName}". 
+Строгие правила: НЕ используй таблицы, символы разметки вроде | или ---. Пиши чистым, понятным текстом с абзацами и пунктами на русском языке.`;
+
+    try {
+        const response = await fetch("https://text.pollinations.ai/" + encodeURIComponent(promptText));
+        let text = await response.text();
+        text = text.replace(/\|/g, ' ').replace(/---+/g, '');
+        aiText.innerHTML = text.replace(/\n/g, '<br>');
+    } catch (e) {
+        aiText.innerHTML = `❌ Ошибка загрузки данных.`;
+    }
+}
+
+async function askCustomAI() {
+    const input = document.getElementById('aiUserInput');
+    const aiText = document.getElementById('aiTextContent');
+    const query = input.value.trim();
     
-    if (!inputField || !chatContainer) return;
-    const queryText = inputField.value.trim();
-    if (!queryText) return;
+    if (!query) return;
 
-    // Делаем блок сообщений видимым при отправке
-    chatContainer.style.display = 'flex';
+    aiText.innerHTML = `⏳ Думаю над ответом: <b>"${query}"</b>...`;
 
-    chatContainer.innerHTML += `<div style="text-align: right; color: #58a6ff; margin-bottom: 4px;"><b>Вы:</b> ${escapeHtmlStyle(queryText)}</div>`;
-    inputField.value = '';
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    const promptText = `Ответь на вопрос пользователя об экологии или истории: "${query}". 
+Строгие правила: Пиши без таблиц, без символов | и ---. Только чистый текст на русском языке.`;
 
-    setTimeout(() => {
-        const lowerQuery = queryText.toLowerCase();
-        const isGeography = sidebarGeoKeywords.some(keyword => lowerQuery.includes(keyword));
-        let responseText = "";
-
-        if (!isGeography) {
-            responseText = "⛔ Отвечаю только на вопросы по географии и объектам карты.";
-        } else if (lowerQuery.includes("атырау")) {
-            responseText = "🤖 Атырау — город на западе Казахстана, в устье реки Урал.";
-        } else if (lowerQuery.includes("москва")) {
-            responseText = "🤖 Москва — столица России, на востоке Восточно-Европейской равнины.";
-        } else if (lowerQuery.includes("астана")) {
-            responseText = "🤖 Астана — столица Казахстана, на севере центральной части.";
-        } else {
-            responseText = `🤖 Объект "${escapeHtmlStyle(queryText)}" успешно проверен по базе данных.`;
-        }
-
-        chatContainer.innerHTML += `<div style="background: #161b22; padding: 6px 8px; border-radius: 4px; border: 1px solid #30363d; color: #c9d1d9; margin-bottom: 4px;">${responseText}</div>`;
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 300);
+    try {
+        const response = await fetch("https://text.pollinations.ai/" + encodeURIComponent(promptText));
+        let text = await response.text();
+        text = text.replace(/\|/g, ' ').replace(/---+/g, '');
+        aiText.innerHTML = text.replace(/\n/g, '<br>');
+    } catch (e) {
+        aiText.innerHTML = `❌ Ошибка запроса к ИИ.`;
+    }
 }
 
-function escapeHtmlStyle(text) {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+async function loadCountryData(){
+  const code=document.getElementById('countrySelect').value;
+  const obj=allCountries.find(c=>c.code===code);
+  if(obj) {
+      map.flyTo(obj.center, obj.zoom, {duration: 1.5});
+      getAIEcoReport(obj.name.replace(/^[^\s]+\s/, ''));
+  }
+  const list=document.getElementById('resultsList');
+  list.innerHTML='<div class="loader">⏳ Загрузка городов...</div>';
+  cluster.clearLayers();
+  const key='country_'+code;
+  if(cache[key]){ render(cache[key]); return; }
+  try{
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?countrycodes=${code.toLowerCase()}&format=json&addressdetails=1&limit=50&featuretype=settlement&email=eco@atyrau.kz`);
+    const data=await res.json();
+    cache[key]=data; saveCache(); render(data);
+  }catch(e){ list.innerHTML='<div class="loader" style="color:#f85149">Ошибка сети / Лимит</div>'; }
 }
+
+function render(data){
+  const list=document.getElementById('resultsList'); list.innerHTML='';
+  if(!data||!data.length){ list.innerHTML='<div class="loader">Нет данных</div>'; return; }
+  data.forEach(i=>{
+    const lat=+i.lat, lng=+i.lon, name=i.name||i.display_name.split(',')[0];
+    const pct=hashEco(lat,lng), color=getColor(pct);
+    const m=L.circleMarker([lat,lng],{radius:8,fillColor:color,color:'#fff',weight:1.5,fillOpacity:0.9});
+    m.bindPopup(`<b>📍 ${name}</b><br>${i.type||''}<br>Загрязнение: <b style="color:${color}">${pct}%</b>`);
+    cluster.addLayer(m);
+    const el=document.createElement('div'); el.className='item';
+    el.innerHTML=`<div style="font-weight:600">${name}</div><div style="font-size:11px;color:#8b949e">${i.type||''}</div><div style="font-size:11px;color:${color};font-weight:700">Загрязнение ${pct}%</div>`;
+    el.onclick=()=>{ 
+        map.flyTo([lat,lng], 11, {duration: 1.2});
+        m.openPopup(); 
+        getAIEcoReport(name); 
+    };
+    list.appendChild(el);
+  });
+}
+
+async function searchLocation(){
+  const q=document.getElementById('searchInput').value.trim(); if(!q) return;
+  const list=document.getElementById('resultsList'); list.innerHTML='<div class="loader">🔍 Поиск...</div>'; cluster.clearLayers();
+  const code=document.getElementById('countrySelect').value;
+  try{
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=${code.toLowerCase()}&limit=20&addressdetails=1&email=eco@atyrau.kz`);
+    const data=await res.json(); 
+    render(data); 
+    if(data[0]) {
+        map.flyTo([+data[0].lat,+data[0].lon], 11, {duration: 1.5});
+        getAIEcoReport(q);
+    }
+  }catch(e){ list.innerHTML='<div class="loader" style="color:#f85149">Ошибка поиска</div>'; }
+}
+
+function getUserLocation(){
+  if (!navigator.geolocation) {
+      alert('Геолокация не поддерживается вашим браузером');
+      return;
+  }
+  navigator.geolocation.getCurrentPosition(async p=>{
+    const lat=p.coords.latitude, lng=p.coords.longitude;
+    map.flyTo([lat,lng], 12, {duration: 1.5});
+    try {
+        const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&email=eco@atyrau.kz`);
+        const d=await r.json(); 
+        const name=(d.address && (d.address.city||d.address.village||d.address.town)) || "Моя гео";
+        const pct=hashEco(lat,lng), color=getColor(pct);
+        const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:1}).bindPopup(`<b>🎯 ${name}</b><br>Загрязнение ${pct}%`);
+        cluster.addLayer(m); m.openPopup();
+        getAIEcoReport(name);
+    } catch(err) {
+        alert('Не удалось определить название места по координатам');
+    }
+  },e=>{
+    alert('Ошибка геолокации: убедитесь, что разрешили доступ к GPS и запускаете проект через сервер (Live Server / localhost).');
+  },{timeout: 10000});
+}
+
+document.getElementById('searchInput').addEventListener('keypress', e=>{ if(e.key==='Enter') searchLocation(); });
+document.getElementById('aiUserInput').addEventListener('keypress', e=>{ if(e.key==='Enter') askCustomAI(); });
+
+init();
+</script>
+</body>
+</html>
+
+<style>
+@media (max-width: 768px){
+  #app{flex-direction:column}
+  .sidebar{width:100%!important;height:55vh!important;border-right:none;border-bottom:2px solid #30363d;order:2}
+  #map{width:100%!important;height:45vh!important;order:1;flex:none!important}
+  .header{padding:8px}
+  .custom-select,.input{font-size:15px!important}
+  #resultsList{max-height:140px;}
+}
+#mobileToggle{
+  display:none;position:fixed;top:10px;right:10px;z-index:999999;
+  background:#1f6feb;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-weight:700;font-size:12px;box-shadow:0 4px 12px #000;
+}
+@media (max-width:768px){#mobileToggle{display:block}}
+.sidebar.hidden{transform:translateY(100%);height:0!important;overflow:hidden}
+</style>
+
+<button id="mobileToggle" onclick="document.querySelector('.sidebar').classList.toggle('hidden'); setTimeout(()=>map.invalidateSize(),300)">☰ Список / Карта</button>
+
+<script>
+window.addEventListener('load', ()=>{ setTimeout(()=>{ if(window.map) map.invalidateSize(); }, 500); });
+window.addEventListener('resize', ()=>{ if(window.map) map.invalidateSize(); });
+</script>
